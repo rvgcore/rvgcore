@@ -630,6 +630,44 @@ public:
 
 };
 
+
+/*########
+#### go_veil_skith_cage
+#####*/
+
+enum MissingFriends
+{
+   QUEST_MISSING_FRIENDS    = 10852,
+   NPC_CAPTIVE_CHILD        = 22314,
+   SAY_FREE                 = 0
+};
+
+class go_veil_skith_cage : public GameObjectScript
+{
+public:
+   go_veil_skith_cage() : GameObjectScript("go_veil_skith_cage") { }
+
+   bool OnGossipHello(Player *player, GameObject* go)
+   {
+       if (player->GetQuestStatus(QUEST_MISSING_FRIENDS) == QUEST_STATUS_INCOMPLETE)
+       {
+           std::list<Creature*> ChildrenList;
+           GetCreatureListWithEntryInGrid(ChildrenList, go, NPC_CAPTIVE_CHILD, INTERACTION_DISTANCE);
+           for (std::list<Creature*>::const_iterator itr = ChildrenList.begin(); itr != ChildrenList.end(); ++itr)
+           {
+               go->UseDoorOrButton();
+               player->KilledMonsterCredit(NPC_CAPTIVE_CHILD, (*itr)->GetGUID());
+               (*itr)->ForcedDespawn(5000);
+               (*itr)->GetMotionMaster()->MovePoint(1, go->GetPositionX()+5, go->GetPositionY(), go->GetPositionZ());
+               (*itr)->AI()->Talk(SAY_FREE);
+               (*itr)->GetMotionMaster()->Clear();
+           }
+       }
+       return false;
+   }
+};
+
+
 /*########
 ####npc_akuno
 #####*/
@@ -694,7 +732,6 @@ public:
             summon->AI()->AttackStart(me);
         }
     };
-
 };
 
 void AddSC_terokkar_forest()
@@ -709,4 +746,5 @@ void AddSC_terokkar_forest()
     new npc_skywing();
     new npc_slim();
     new npc_akuno();
+    new go_veil_skith_cage();
 }

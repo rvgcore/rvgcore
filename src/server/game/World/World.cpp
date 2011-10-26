@@ -2053,7 +2053,7 @@ void World::SendGlobalGMMessage(WorldPacket* packet, WorldSession* self, uint32 
             itr->second->GetPlayer() &&
             itr->second->GetPlayer()->IsInWorld() &&
             itr->second != self &&
-            !AccountMgr::IsPlayerAccount(itr->second->GetSecurity()) &&
+            itr->second->GetSecurity() > SEC_MODERATOR &&
             (team == 0 || itr->second->GetPlayer()->GetTeam() == team))
         {
             itr->second->SendPacket(packet);
@@ -2150,7 +2150,7 @@ void World::SendGMText(int32 string_id, ...)
         if (!itr->second || !itr->second->GetPlayer() || !itr->second->GetPlayer()->IsInWorld())
             continue;
 
-        if (AccountMgr::IsPlayerAccount(itr->second->GetSecurity()))
+        if (itr->second->GetSecurity() < SEC_GAMEMASTER)
             continue;
 
         wt_do(itr->second->GetPlayer());

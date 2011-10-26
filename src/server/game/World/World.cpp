@@ -411,7 +411,7 @@ void World::LoadConfigSettings(bool reload)
     m_bool_configs[CONFIG_ALLOW_TICKETS] = ConfigMgr::GetBoolDefault("AllowTickets", true);
 
     ///- Read LFG config setting
-    m_bool_configs[CONFIG_CHANNEL_ON_MAJOR_CITY_ONLY_FLAG]  = sConfig->GetBoolDefault("Channel.MajorCityOnlyFlag", true);
+    m_bool_configs[CONFIG_CHANNEL_ON_MAJOR_CITY_ONLY_FLAG]  = ConfigMgr::GetBoolDefault("Channel.MajorCityOnlyFlag", true);
 
     ///- Get string for new logins (newly created characters)
     SetNewCharString(ConfigMgr::GetStringDefault("PlayerStart.String", ""));

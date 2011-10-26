@@ -50,14 +50,14 @@ public:
     {
 	    if (pPlayer->GetGuildId() == 0)
             {
-	    		pPlayer->SendEquipError(GH_NO_GUILD,pItem,NULL);
+	    		//pPlayer::SendEquipError(GH_NO_GUILD,pItem,NULL);
                 return false;
             }
 
         QueryResult result = CharacterDatabase.PQuery("SELECT tele_x, tele_y, tele_z, map FROM guild_houses WHERE guildid = '%d'", pPlayer->GetGuildId());
         if (!result)
         {
-        	pPlayer->SendEquipError(GH_NO_GUILDHOUSE,pItem,NULL);
+        	//pPlayer->SendEquipError(GH_NO_GUILDHOUSE,pItem,NULL);
             return false;
         }
 

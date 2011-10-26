@@ -1,0 +1,2 @@
+DELETE FROM command WHERE name = 'buff';
+INSERT INTO command VALUES ('buff', 3, 'Syntax: .buff all | name <player>\r\n Cast predetermined spells to all players online or specific player');

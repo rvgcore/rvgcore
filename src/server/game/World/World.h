@@ -83,6 +83,7 @@ enum WorldTimers
 /// Configuration elements
 enum WorldBoolConfigs
 {
+	CONFIG_CHANNEL_ON_MAJOR_CITY_ONLY_FLAG,
     CONFIG_DURABILITY_LOSS_IN_PVP = 0,
     CONFIG_ADDON_CHANNEL,
     CONFIG_ALLOW_PLAYER_COMMANDS,

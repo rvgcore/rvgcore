@@ -1687,8 +1687,14 @@ ListenRange.Yell = 300
 #                     addons that use normal languages for sending data to other clients.
 #        Default:     0 - (Disabled)
 #                     1 - (Enabled)
-
 ChatFakeMessagePreventing = 0
+
+#    Channel.MajorCityOnlyFlag
+#        Description: Configuration for global channels with flags.
+#        Default:    1 - (Enabled, Channels with flag CHANNEL_DBC_FLAG_CITY_ONLY will be activated in the major cities only (blizzlike))
+#               0 - (Disabled, Channels with flag CHANNEL_DBC_FLAG_CITY_ONLY will be connected  anywhere)
+	
+Channel.MajorCityOnlyFlag = 0
 
 #
 #    ChatStrictLinkChecking.Severity

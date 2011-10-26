@@ -1226,13 +1226,17 @@ void AddBattlegroundScripts()
 
 #ifdef SCRIPTS
 /* This is where custom scripts' loading functions should be declared. */
-
+void AddSC_custom_item_scripts();
+void AddSC_custom_commandscript();
+void AddSC_custom_creature_scripts();
 #endif
 
 void AddCustomScripts()
 {
 #ifdef SCRIPTS
     /* This is where custom scripts should be added. */
-
+	AddSC_custom_item_scripts();
+	AddSC_custom_commandscript();
+	AddSC_custom_creature_scripts();
 #endif
 }

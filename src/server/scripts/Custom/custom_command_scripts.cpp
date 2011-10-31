@@ -63,7 +63,10 @@ public:
 				return false;
 
 			std::string chrNameLink = handler->playerLink(target_name);
-			target->CastSpell(target, 24425, false);
+			target->CastSpell(target, 24425, false); //Spirit of Zandalar
+			target->CastSpell(target, 22888, false); //Rallying Cry
+			target->CastSpell(target, 35076, false); //Blessing of A'dal
+			target->CastSpell(target, 27571, false); //Cascade of Roses
 		}
 		else
 		{

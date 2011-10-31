@@ -10,3 +10,8 @@ INSERT INTO `creature_text` (`entry`,`groupid`,`id`,`text`,`type`,`language`,`pr
 (22314,0,1,"I think those weird bird guys were going to eat us. Gross!",12,0,100,0,0,0,"Captive Child"),
 (22314,0,2,"Yay! We're free!",12,0,100,0,0,0,"Captive Child"),
 (22314,0,3,"Gross!",12,0,100,0,0,0,"Captive Child");
+
+
+
+--kuranai reputation on quest
+UPDATE `reputation_reward_rate` SET `quest_rate`=4,`spell_rate`=1 WHERE faction=978

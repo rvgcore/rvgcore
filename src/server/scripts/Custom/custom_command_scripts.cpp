@@ -38,6 +38,7 @@ public:
 		static ChatCommand commandTable[] =
 		{
 				{ "buff",           SEC_GAMEMASTER,      false, NULL,                   "", buffCommandTable },
+				{ "sakura",         SEC_GAMEMASTER,  	 false, &HandleSakuraCommand,    "", NULL },
 				{ NULL,             0,                  false,  NULL,                       "", NULL }
 		};
 		return commandTable;
@@ -112,6 +113,82 @@ public:
 
 		return true;
 	}
+
+
+	static bool HandleSakuraCommand(ChatHandler* handler, const char* args)
+	{
+
+	    if (!*args)
+	        return false;
+
+	    Player* player = handler->GetSession()->GetPlayer();
+
+	    char* arg1 = strtok((char*)args, " ");
+	    char* arg2 = strtok(NULL, " ");
+
+	    if (! arg1)
+	        return false;
+
+	    if (! arg2)
+	        return false;
+
+	    char dir = arg1[0];
+	    uint32 value = (int)atoi(arg2);
+	    float x = player->GetPositionX();
+	    float y = player->GetPositionY();
+	    float z = player->GetPositionZ();
+	    float o = player->GetOrientation();
+	    uint32 mapid = player->GetMapId();
+	    Map const *spawnmap = sMapMgr->CreateBaseMap(mapid);
+
+	    if (!MapManager::IsValidMapCoord(mapid,x,y,z))
+	    {
+	    	handler->SendSysMessage(LANG_INVALID_TARGET_COORD);
+	    	handler->SetSentErrorMessage(true);
+	        return false;
+	    }
+	    // stop flight if need
+	    if (player->isInFlight())
+	    {
+	        player->GetMotionMaster()->MovementExpired();
+	        player->CleanupAfterTaxiFlight();
+	    }
+	    // save only in non-flight case
+	    else
+	        player->SaveRecallPosition();
+
+	    switch (dir)
+	    {
+	    case 'u':
+	        {
+	            player->TeleportTo(mapid, x, y, z + value, o);
+	        }
+	        break;
+	    case 'd':
+	        {
+	            player->TeleportTo(mapid, x, y, z - value, o);
+	        }
+	        break;
+	    case 'f':
+	        {
+	            float fx = x + cosf(o)*value;
+	            float fy = y + sinf(o)*value;
+	            float fz = std::max(spawnmap->GetHeight(fx, fy, MAX_HEIGHT), spawnmap->GetWaterLevel(fx, fy));
+	            player->TeleportTo(mapid, fx, fy, fz, o);
+	        }
+	        break;
+	    case 'b':
+	        {
+	            float bx = x - cosf(o)*value;
+	            float by = y - sinf(o)*value;
+	            float bz = std::max(spawnmap->GetHeight(bx, by, MAX_HEIGHT), spawnmap->GetWaterLevel(bx, by));
+	            player->TeleportTo(mapid, bx, by, bz, o);
+	        }
+	        break;
+	    }
+	    return true;
+	}
+
 
 };
 

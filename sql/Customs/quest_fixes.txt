@@ -14,4 +14,21 @@ INSERT INTO `creature_text` (`entry`,`groupid`,`id`,`text`,`type`,`language`,`pr
 
 
 --kuranai reputation on quest
-UPDATE `reputation_reward_rate` SET `quest_rate`=4,`spell_rate`=1 WHERE faction=978
+UPDATE `reputation_reward_rate` SET `quest_rate`=2,`spell_rate`=1 WHERE faction=978
+
+
+--Seer's Relic
+update quest_template set specialflags=0 where entry=9545;
+
+
+
+-- Shattered Hand Berserker SAI
+SET @ENTRY := 16878;
+SET @SOURCETYPE := 0;
+
+DELETE FROM `smart_scripts` WHERE `entryorguid`=@ENTRY AND `source_type`=@SOURCETYPE;
+UPDATE creature_template SET AIName="SmartAI" WHERE entry=@ENTRY LIMIT 1;
+INSERT INTO `smart_scripts` (`entryorguid`,`source_type`,`id`,`link`,`event_type`,`event_phase_mask`,`event_chance`,`event_flags`,`event_param1`,`event_param2`,`event_param3`,`event_param4`,`action_type`,`action_param1`,`action_param2`,`action_param3`,`action_param4`,`action_param5`,`action_param6`,`target_type`,`target_param1`,`target_param2`,`target_param3`,`target_x`,`target_y`,`target_z`,`target_o`,`comment`) VALUES 
+(@ENTRY,@SOURCETYPE,0,0,6,0,100,0,10,100,1,1,12,22454,3,300000,0,1,0,0,0,0,0,0.0,0.0,0.0,0.0,"summon_fel_spirit");
+
+update creature_template set scriptname=' '  where entry=16878;

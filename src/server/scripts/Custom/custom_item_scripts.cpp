@@ -61,6 +61,18 @@ public:
             return false;
         }
 
+
+        if (pPlayer->IsBeingTeleported() == true)
+                    {
+                        return false;
+                    }
+
+        if (pPlayer->isInFlight())
+                    {
+        	return false;
+                    }
+
+
        float x, y, z, o;
        uint32 map;
             

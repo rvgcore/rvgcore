@@ -11,3 +11,7 @@ build/
 *.diff
 
 .project
+
+.settings/org.eclipse.ltk.core.refactoring.prefs
+
+.settings/org.eclipse.cdt.codan.core.prefs

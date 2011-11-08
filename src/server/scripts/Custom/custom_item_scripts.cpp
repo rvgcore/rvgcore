@@ -37,64 +37,74 @@ EndContentData */
 # attempt to attach guild house teleport to item.
 ######*/
 
-#define GH_NO_GUILDHOUSE "Your guild does not have a guild house!"
-#define GH_NO_GUILD      "You should really join a guild."
-
 
 class item_gh_teleporter : public ItemScript
 {
 public:
-    item_gh_teleporter() : ItemScript("item_gh_teleporter") { }
+	item_gh_teleporter() : ItemScript("item_gh_teleporter") { }
 
-    bool OnUse(Player *pPlayer, Item *pItem, SpellCastTargets const& targets)
-    {
-	    if (pPlayer->GetGuildId() == 0)
-            {
-	    		//pPlayer::SendEquipError(GH_NO_GUILD,pItem,NULL);
-                return false;
-            }
+	bool OnUse(Player *pPlayer, Item *pItem, SpellCastTargets const& targets)
+	{
+		if (pPlayer->GetGuildId() == 0)
+		{
+			pPlayer->SendSysMessage(EQUIP_ERR_CANT_DO_RIGHT_NOW);
+			pPlayer->SetSentErrorMessage(true);
+			return false;
+		}
 
-        QueryResult result = CharacterDatabase.PQuery("SELECT tele_x, tele_y, tele_z, map FROM guild_houses WHERE guildid = '%d'", pPlayer->GetGuildId());
-        if (!result)
-        {
-        	//pPlayer->SendEquipError(GH_NO_GUILDHOUSE,pItem,NULL);
-            return false;
-        }
-
-
-        if (pPlayer->IsBeingTeleported() == true)
-                    {
-                        return false;
-                    }
-
-        if (pPlayer->isInFlight())
-                    {
-        	return false;
-                    }
+		QueryResult result = CharacterDatabase.PQuery("SELECT tele_x, tele_y, tele_z, map FROM guild_houses WHERE guildid = '%d'", pPlayer->GetGuildId());
+		if (!result)
+		{
+			pPlayer->SendSysMessage(EQUIP_ERR_CANT_DO_RIGHT_NOW);
+			pPlayer->SetSentErrorMessage(true);
+			return false;
+		}
 
 
-       float x, y, z, o;
-       uint32 map;
-            
-       Field *fields = result->Fetch();
-       x = fields[0].GetFloat();
-       y = fields[1].GetFloat();
-       z = fields[2].GetFloat();
-       o = 0;
-       map = fields[3].GetUInt32();
+		if (pPlayer->IsBeingTeleported() == true)
+		{
+			pPlayer->SendSysMessage(EQUIP_ERR_CANT_DO_RIGHT_NOW);
+			pPlayer->SetSentErrorMessage(true);
+			return false;
+		}
 
-       pPlayer->SaveRecallPosition();
-       pPlayer->TeleportTo(map, x, y, z, o);
-       pPlayer->SaveToDB();
+		if (pPlayer->isInCombat())
+		{
+			pPlayer->SendSysMessage(LANG_YOU_IN_COMBAT);
+			pPlayer->SetSentErrorMessage(true);
+			return false;
+		}
+
+		if (pPlayer->isInFlight())
+		{
+			pPlayer->SendSysMessage(EQUIP_ERR_CANT_DO_RIGHT_NOW);
+			pPlayer->SetSentErrorMessage(true);
+			return false;
+		}
 
 
-      return true;
-    }
+		float x, y, z, o;
+		uint32 map;
+
+		Field *fields = result->Fetch();
+		x = fields[0].GetFloat();
+		y = fields[1].GetFloat();
+		z = fields[2].GetFloat();
+		o = 0;
+		map = fields[3].GetUInt32();
+
+		pPlayer->SaveRecallPosition();
+		pPlayer->TeleportTo(map, x, y, z, o);
+		pPlayer->SaveToDB();
+
+
+		return true;
+	}
 
 };
 
 void AddSC_custom_item_scripts()
 {
 
-    new item_gh_teleporter();
+	new item_gh_teleporter();
 }

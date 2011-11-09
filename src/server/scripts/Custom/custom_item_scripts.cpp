@@ -47,38 +47,34 @@ public:
 	{
 		if (pPlayer->GetGuildId() == 0)
 		{
-			pPlayer->SendSysMessage(EQUIP_ERR_CANT_DO_RIGHT_NOW);
-			pPlayer->SetSentErrorMessage(true);
+			pPlayer->SendEquipError(EQUIP_ERR_CANT_DO_RIGHT_NOW, pItem, NULL);
+
 			return false;
 		}
 
 		QueryResult result = CharacterDatabase.PQuery("SELECT tele_x, tele_y, tele_z, map FROM guild_houses WHERE guildid = '%d'", pPlayer->GetGuildId());
 		if (!result)
 		{
-			pPlayer->SendSysMessage(EQUIP_ERR_CANT_DO_RIGHT_NOW);
-			pPlayer->SetSentErrorMessage(true);
+			pPlayer->SendEquipError(EQUIP_ERR_CANT_DO_RIGHT_NOW, pItem, NULL);
 			return false;
 		}
 
 
 		if (pPlayer->IsBeingTeleported() == true)
 		{
-			pPlayer->SendSysMessage(EQUIP_ERR_CANT_DO_RIGHT_NOW);
-			pPlayer->SetSentErrorMessage(true);
+			pPlayer->SendEquipError(EQUIP_ERR_CANT_DO_RIGHT_NOW, pItem, NULL);
 			return false;
 		}
 
 		if (pPlayer->isInCombat())
 		{
-			pPlayer->SendSysMessage(LANG_YOU_IN_COMBAT);
-			pPlayer->SetSentErrorMessage(true);
+			pPlayer->SendEquipError(EQUIP_ERR_CANT_DO_RIGHT_NOW, pItem, NULL);
 			return false;
 		}
 
 		if (pPlayer->isInFlight())
 		{
-			pPlayer->SendSysMessage(EQUIP_ERR_CANT_DO_RIGHT_NOW);
-			pPlayer->SetSentErrorMessage(true);
+			pPlayer->SendEquipError(EQUIP_ERR_CANT_DO_RIGHT_NOW, pItem, NULL);
 			return false;
 		}
 

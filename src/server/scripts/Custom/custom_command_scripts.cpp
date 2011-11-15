@@ -38,7 +38,7 @@ public:
 		static ChatCommand commandTable[] =
 		{
 				{ "buff",           SEC_GAMEMASTER,      false, NULL,                   "", buffCommandTable },
-				{ "sakura",         SEC_GAMEMASTER,  	 false, &HandleSakuraCommand,    "", NULL },
+				{ "mv",         SEC_GAMEMASTER,  	 false, &HandleMvCommand,    "", NULL },
 				{ NULL,             0,                  false,  NULL,                       "", NULL }
 		};
 		return commandTable;
@@ -115,7 +115,7 @@ public:
 	}
 
 
-	static bool HandleSakuraCommand(ChatHandler* handler, const char* args)
+	static bool HandleMvCommand(ChatHandler* handler, const char* args)
 	{
 
 	    if (!*args)

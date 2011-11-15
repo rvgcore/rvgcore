@@ -25,6 +25,134 @@ enum LysLadimoreSpells
 #define SAY_LYS_LADIMORE_MIND_CONTROL        "Come join me in the underworld!"
 
 
+
+enum AngryTurkeySpells
+{
+    ENRAGE                                                  = 48138,
+    FRENZY                                                  = 48142,
+    MORTAL_WOUND                                            = 59265,
+    TURKEY_BITE                                             = 55266,
+    CHICKEN_CALL                                             = 228,
+    TURKEY_FEVER                                          = 54098,
+    SUMMON_CHICKEN                                          = 659
+};
+
+// Angry Turkey yells
+#define SAY_ANGRYTURKEY_AGGRO    "Gobble, gobble you no kill me!"
+#define SAY_ANGRYTURKEY_SLAY     "Gobble, gobble, You taste yummy!"
+#define SAY_ANGRYTURKEY_DEATH    "Noooooo, Me is turkey sammich!"
+#define SAY_ANGRYTURKEY_MORPH    "Gobble gobble, Me stuff you!"
+
+// Angry Turkey
+class boss_angry_turkey : public CreatureScript
+{
+public:
+	boss_angry_turkey() : CreatureScript("boss_angry_turkey") { }
+
+    CreatureAI* GetAI(Creature* pCreature) const
+    {
+        return new boss_angry_turkeyAI (pCreature);
+    }
+
+    struct boss_angry_turkeyAI : public ScriptedAI
+    {
+        boss_angry_turkeyAI(Creature *pCreature) : ScriptedAI(pCreature){}
+
+        uint32 EnrageTimer;
+        uint32 WoundTimer;
+        uint32 BiteTimer;
+        uint32 FeverTimer;
+        bool Enraged;
+        bool Turkey;
+
+        void Reset()
+        {
+            me->RestoreDisplayId();
+            EnrageTimer = 15000;
+            WoundTimer = 5000;
+            BiteTimer = 45000;
+            FeverTimer = 12000;
+            Enraged = false;
+            Turkey = false;
+        }
+
+        void EnterCombat(Unit* /*who*/)
+        {
+            me->MonsterYell(SAY_ANGRYTURKEY_AGGRO, LANG_UNIVERSAL, 0);
+        }
+
+        void KilledUnit(Unit* victim)
+        {
+            me->MonsterYell(SAY_ANGRYTURKEY_SLAY, LANG_UNIVERSAL, 0);
+
+            if (victim->GetTypeId() == TYPEID_PLAYER)
+                victim->SummonCreature(SUMMON_CHICKEN, victim->GetPositionX(), victim->GetPositionY(), victim->GetPositionZ(), 0, TEMPSUMMON_TIMED_DESPAWN, 60000);
+        }
+
+        void JustDied(Unit* /*killer*/)
+        {
+            me->MonsterYell(SAY_ANGRYTURKEY_DEATH, LANG_UNIVERSAL, 0);
+            me->RestoreDisplayId();
+        }
+
+        void UpdateAI(const uint32 uiDiff)
+        {
+            if (!UpdateVictim())
+                return;
+
+
+            if (EnrageTimer <= uiDiff)
+            {
+                DoCast(me, ENRAGE);
+                EnrageTimer = urand(20000,25000);
+            } else EnrageTimer -= uiDiff;
+
+
+            if (WoundTimer <= uiDiff)
+            {
+                DoCast(me->getVictim(), MORTAL_WOUND);
+                WoundTimer = 5000;
+            } else WoundTimer -= uiDiff;
+
+
+            if (FeverTimer <= uiDiff)
+            {
+                DoCastAOE(TURKEY_FEVER);
+                FeverTimer = 20000;
+            } else FeverTimer -= uiDiff;
+
+            if (BiteTimer <= uiDiff)
+            {
+                DoCast(me, TURKEY_BITE);
+                if (Unit *pTarget = SelectTarget(SELECT_TARGET_RANDOM,1))
+                    DoCast(pTarget, CHICKEN_CALL);
+                BiteTimer = 45000;
+            } else BiteTimer -= uiDiff;
+
+
+            if (HealthBelowPct(80) && !Turkey)
+            {
+                me->SetDisplayId(21774);
+                me->MonsterYell(SAY_ANGRYTURKEY_MORPH, LANG_UNIVERSAL, 0);
+                DoCast(me, ENRAGE);
+                EnrageTimer = urand(25000,35000);
+                Turkey = true;
+            }
+
+
+            if (HealthBelowPct(15) && !Enraged)
+            {
+                DoCast(me, FRENZY);
+                Enraged = true;
+            }
+
+            DoMeleeAttackIfReady();
+        }
+    };
+
+};
+
+
 // Lys Ladimore
 
 class boss_lys_ladimore : public CreatureScript
@@ -129,5 +257,6 @@ public:
 void AddSC_custom_creature_scripts()
 {
 	new boss_lys_ladimore;
+	new boss_angry_turkey;
 }
 

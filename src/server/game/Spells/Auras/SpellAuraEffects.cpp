@@ -555,7 +555,7 @@ int32 AuraEffect::CalculateAmount(Unit* caster)
                         //+75.00% from sp bonus
                         float bonus = 0.75f;
 
-                        DoneActualBenefit += caster->SpellBaseHealingBonus(m_spellInfo->GetSchoolMask()) * bonus;
+                        DoneActualBenefit += 0.25f*(caster->SpellBaseHealingBonus(m_spellInfo->GetSchoolMask()) * bonus);
                         // Divine Guardian is only applied at the spell healing bonus because it was already applied to the base value in CalculateSpellDamage
                         DoneActualBenefit = caster->ApplyEffectModifiers(GetSpellInfo(), m_effIndex, DoneActualBenefit);
                         DoneActualBenefit *= caster->CalculateLevelPenalty(GetSpellInfo());

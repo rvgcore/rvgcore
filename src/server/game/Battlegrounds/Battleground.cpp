@@ -1454,7 +1454,11 @@ bool Battleground::AddObject(uint32 type, uint32 entry, float x, float y, float 
     data.go_state       = 1;
 */
     // Add to world, so it can be later looked up from HashMapHolder
-    map->AddToMap(go);
+    if (!map->AddToMap(go))
+    {
+        delete go;
+        return false;
+    }
     m_BgObjects[type] = go->GetGUID();
     return true;
 }
@@ -1557,7 +1561,12 @@ Creature* Battleground::AddCreature(uint32 entry, uint32 type, uint32 teamval, f
     creature->SetSpeed(MOVE_WALK,  cinfo->speed_walk);
     creature->SetSpeed(MOVE_RUN,   cinfo->speed_run);
 
-    map->AddToMap(creature);
+    if (!map->AddToMap(creature))
+    {
+        delete creature;
+        return NULL;
+    }
+
     m_BgCreatures[type] = creature->GetGUID();
 
     if (respawntime)
@@ -1759,12 +1768,12 @@ void Battleground::HandleKillPlayer(Player* player, Player* killer)
 
         for (BattlegroundPlayerMap::const_iterator itr = m_Players.begin(); itr != m_Players.end(); ++itr)
         {
-            Player* player = ObjectAccessor::FindPlayer(itr->first);
-            if (!player || player == killer)
+            Player* creditedPlayer = ObjectAccessor::FindPlayer(itr->first);
+            if (!creditedPlayer || creditedPlayer == killer)
                 continue;
 
-            if (player->GetTeam() == killer->GetTeam() && player->IsAtGroupRewardDistance(player))
-                UpdatePlayerScore(player, SCORE_HONORABLE_KILLS, 1);
+            if (creditedPlayer->GetTeam() == killer->GetTeam() && creditedPlayer->IsAtGroupRewardDistance(player))
+                UpdatePlayerScore(creditedPlayer, SCORE_HONORABLE_KILLS, 1);
         }
     }
 

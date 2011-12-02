@@ -923,7 +923,7 @@ void Spell::EffectDummy(SpellEffIndex effIndex)
                     if (m_caster->GetTypeId() != TYPEID_PLAYER)
                         return;
 
-                    uint32 spell_id = roll_chance_i(50)
+                    spell_id = roll_chance_i(50)
                         ? 29277                             // Summon Purified Helboar Meat
                         : 29278;                            // Summon Toxic Helboar Meat
 
@@ -951,12 +951,16 @@ void Spell::EffectDummy(SpellEffIndex effIndex)
                     return;
                 case 35745:                                 // Socrethar's Stone
                 {
-                    uint32 spell_id;
                     switch (m_caster->GetAreaId())
                     {
-                        case 3900: spell_id = 35743; break; // Socrethar Portal
-                        case 3742: spell_id = 35744; break; // Socrethar Portal
-                        default: return;
+                        case 3900:
+                            spell_id = 35743;
+                            break; // Socrethar Portal
+                        case 3742:
+                            spell_id = 35744;
+                            break; // Socrethar Portal
+                        default:
+                            return;
                     }
 
                     m_caster->CastSpell(m_caster, spell_id, true);
@@ -1453,7 +1457,7 @@ void Spell::EffectDummy(SpellEffIndex effIndex)
             if (m_spellInfo->SpellFamilyFlags[0] & SPELLFAMILYFLAG_DK_DEATH_STRIKE)
             {
                 uint32 count = unitTarget->GetDiseasesByCaster(m_caster->GetGUID());
-                int32 bp = int32(count * m_caster->CountPctFromMaxHealth(int32(m_spellInfo->Effects[EFFECT_0].DamageMultiplier)));
+                bp = int32(count * m_caster->CountPctFromMaxHealth(int32(m_spellInfo->Effects[EFFECT_0].DamageMultiplier)));
                 // Improved Death Strike
                 if (AuraEffect const* aurEff = m_caster->GetAuraEffect(SPELL_AURA_ADD_PCT_MODIFIER, SPELLFAMILY_DEATHKNIGHT, 2751, 0))
                     AddPctN(bp, m_caster->CalculateSpellDamage(m_caster, aurEff->GetSpellInfo(), 2));
@@ -1465,12 +1469,12 @@ void Spell::EffectDummy(SpellEffIndex effIndex)
             {
                 if (m_caster->IsFriendlyTo(unitTarget))
                 {
-                    int32 bp = int32(damage * 1.5f);
+                    bp = int32(damage * 1.5f);
                     m_caster->CastCustomSpell(unitTarget, 47633, &bp, NULL, NULL, true);
                 }
                 else
                 {
-                    int32 bp = damage;
+                    bp = damage;
                     m_caster->CastCustomSpell(unitTarget, 47632, &bp, NULL, NULL, true);
                 }
                 return;
@@ -2585,13 +2589,11 @@ void Spell::EffectPersistentAA(SpellEffIndex effIndex)
         if (!caster->IsInWorld())
             return;
         DynamicObject* dynObj = new DynamicObject();
-        if (!dynObj->Create(sObjectMgr->GenerateLowGuid(HIGHGUID_DYNAMICOBJECT), caster, m_spellInfo->Id, *m_targets.GetDst(), radius, false, DYNAMIC_OBJECT_AREA_SPELL))
+        if (!dynObj->CreateDynamicObject(sObjectMgr->GenerateLowGuid(HIGHGUID_DYNAMICOBJECT), caster, m_spellInfo->Id, *m_targets.GetDst(), radius, false, DYNAMIC_OBJECT_AREA_SPELL))
         {
             delete dynObj;
             return;
         }
-
-        dynObj->GetMap()->AddToMap(dynObj);
 
         if (Aura* aura = Aura::TryCreate(m_spellInfo, MAX_EFFECT_MASK, dynObj, caster, &m_spellValue->EffectBasePoints[0]))
         {
@@ -3436,16 +3438,13 @@ void Spell::EffectAddFarsight(SpellEffIndex effIndex)
         return;
 
     DynamicObject* dynObj = new DynamicObject();
-    if (!dynObj->Create(sObjectMgr->GenerateLowGuid(HIGHGUID_DYNAMICOBJECT), m_caster, m_spellInfo->Id, *m_targets.GetDst(), radius, true, DYNAMIC_OBJECT_FARSIGHT_FOCUS))
+    if (!dynObj->CreateDynamicObject(sObjectMgr->GenerateLowGuid(HIGHGUID_DYNAMICOBJECT), m_caster, m_spellInfo->Id, *m_targets.GetDst(), radius, true, DYNAMIC_OBJECT_FARSIGHT_FOCUS))
     {
         delete dynObj;
         return;
     }
 
     dynObj->SetDuration(duration);
-
-    dynObj->setActive(true);    //must before add to map to be put in world container
-    dynObj->GetMap()->AddToMap(dynObj); //grid will also be loaded
     dynObj->SetCasterViewpoint();
 }
 
@@ -6348,13 +6347,13 @@ void Spell::EffectQuestClear(SpellEffIndex effIndex)
     // remove all quest entries for 'entry' from quest log
     for (uint8 slot = 0; slot < MAX_QUEST_LOG_SIZE; ++slot)
     {
-        uint32 quest = player->GetQuestSlotQuestId(slot);
-        if (quest == quest_id)
+        uint32 logQuest = player->GetQuestSlotQuestId(slot);
+        if (logQuest == quest_id)
         {
             player->SetQuestSlot(slot, 0);
 
-            // we ignore unequippable quest items in this case, its' still be equipped
-            player->TakeQuestSourceItem(quest, false);
+            // we ignore unequippable quest items in this case, it's still be equipped
+            player->TakeQuestSourceItem(logQuest, false);
         }
     }
 

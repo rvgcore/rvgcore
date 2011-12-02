@@ -415,21 +415,25 @@ void Map::InitializeObject(Creature* obj)
 }
 
 template<class T>
-void Map::AddToMap(T *obj)
+bool Map::AddToMap(T *obj)
 {
     //TODO: Needs clean up. An object should not be added to map twice.
     if (obj->IsInWorld())
     {
         ASSERT(obj->IsInGrid());
         obj->UpdateObjectVisibility(true);
-        return;
+        return true;
     }
 
     CellCoord cellCoord = Trinity::ComputeCellCoord(obj->GetPositionX(), obj->GetPositionY());
+    //It will create many problems (including crashes) if an object is not added to grid after creation
+    //The correct way to fix it is to make AddToMap return false and delete the object if it is not added to grid
+    //But now AddToMap is used in too many places, I will just see how many ASSERT failures it will cause
+    ASSERT(cellCoord.IsCoordValid());
     if (!cellCoord.IsCoordValid())
     {
         sLog->outError("Map::Add: Object " UI64FMTD " has invalid coordinates X:%f Y:%f grid cell [%u:%u]", obj->GetGUID(), obj->GetPositionX(), obj->GetPositionY(), cellCoord.x_coord, cellCoord.y_coord);
-        return;
+        return false; //Should delete object
     }
 
     Cell cell(cellCoord);
@@ -452,6 +456,7 @@ void Map::AddToMap(T *obj)
     //something, such as vehicle, needs to be update immediately
     //also, trigger needs to cast spell, if not update, cannot see visual
     obj->UpdateObjectVisibility(true);
+    return true;
 }
 
 bool Map::IsGridLoaded(const GridCoord &p) const
@@ -660,8 +665,7 @@ void Map::RemovePlayerFromMap(Player* player, bool remove)
 }
 
 template<class T>
-void
-Map::RemoveFromMap(T *obj, bool remove)
+void Map::RemoveFromMap(T *obj, bool remove)
 {
     obj->RemoveFromWorld();
     if (obj->isActiveObject())
@@ -2137,10 +2141,10 @@ void Map::RemoveFromActive(Creature* c)
     }
 }
 
-template void Map::AddToMap(Corpse*);
-template void Map::AddToMap(Creature*);
-template void Map::AddToMap(GameObject*);
-template void Map::AddToMap(DynamicObject*);
+template bool Map::AddToMap(Corpse*);
+template bool Map::AddToMap(Creature*);
+template bool Map::AddToMap(GameObject*);
+template bool Map::AddToMap(DynamicObject*);
 
 template void Map::RemoveFromMap(Corpse*, bool);
 template void Map::RemoveFromMap(Creature*, bool);
@@ -2451,7 +2455,7 @@ bool InstanceMap::Reset(uint8 method)
     return m_mapRefManager.isEmpty();
 }
 
-void InstanceMap::PermBindAllPlayers(Player* player)
+void InstanceMap::PermBindAllPlayers(Player* source)
 {
     if (!IsDungeon())
         return;
@@ -2459,11 +2463,11 @@ void InstanceMap::PermBindAllPlayers(Player* player)
     InstanceSave* save = sInstanceSaveMgr->GetInstanceSave(GetInstanceId());
     if (!save)
     {
-        sLog->outError("Cannot bind player (GUID: %u, Name: %s), because no instance save is available for instance map (Name: %s, Entry: %u, InstanceId: %u)!", player->GetGUIDLow(), player->GetName(), player->GetMap()->GetMapName(), player->GetMapId(), GetInstanceId());
+        sLog->outError("Cannot bind player (GUID: %u, Name: %s), because no instance save is available for instance map (Name: %s, Entry: %u, InstanceId: %u)!", source->GetGUIDLow(), source->GetName(), source->GetMap()->GetMapName(), source->GetMapId(), GetInstanceId());
         return;
     }
 
-    Group* group = player->GetGroup();
+    Group* group = source->GetGroup();
     // group members outside the instance group don't get bound
     for (MapRefManager::iterator itr = m_mapRefManager.begin(); itr != m_mapRefManager.end(); ++itr)
     {

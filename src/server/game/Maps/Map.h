@@ -246,7 +246,7 @@ class Map : public GridRefManager<NGridType>
 
         virtual bool AddPlayerToMap(Player*);
         virtual void RemovePlayerFromMap(Player*, bool);
-        template<class T> void AddToMap(T *);
+        template<class T> bool AddToMap(T *);
         template<class T> void RemoveFromMap(T *, bool);
 
         void VisitNearbyCellsOf(WorldObject* obj, TypeContainerVisitor<Trinity::ObjectUpdater, GridTypeMapContainer> &gridVisitor, TypeContainerVisitor<Trinity::ObjectUpdater, WorldTypeMapContainer> &worldVisitor);
@@ -574,7 +574,7 @@ class InstanceMap : public Map
         bool Reset(uint8 method);
         uint32 GetScriptId() { return i_script_id; }
         InstanceScript* GetInstanceScript() { return i_data; }
-        void PermBindAllPlayers(Player* player);
+        void PermBindAllPlayers(Player* source);
         void UnloadAll();
         bool CanEnter(Player* player);
         void SendResetWarnings(uint32 timeLeft) const;

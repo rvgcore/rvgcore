@@ -133,7 +133,7 @@ public:
 	        return false;
 
 	    char dir = arg1[0];
-	    uint32 value = (int)atoi(arg2);
+	    uint32 value = (float)atof(arg2);
 	    float x = player->GetPositionX();
 	    float y = player->GetPositionY();
 	    float z = player->GetPositionZ();

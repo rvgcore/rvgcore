@@ -1229,6 +1229,8 @@ void AddBattlegroundScripts()
 void AddSC_custom_item_scripts();
 void AddSC_custom_commandscript();
 void AddSC_custom_creature_scripts();
+void AddSC_custom_boss_scrooge();
+void AddSC_custom_gamescript();
 #endif
 
 void AddCustomScripts()
@@ -1238,5 +1240,7 @@ void AddCustomScripts()
 	AddSC_custom_item_scripts();
 	AddSC_custom_commandscript();
 	AddSC_custom_creature_scripts();
+	AddSC_custom_boss_scrooge();
+	AddSC_custom_gamescript();
 #endif
 }

@@ -13,6 +13,8 @@ set(scripts_STAT_SRCS
   Custom/custom_item_scripts.cpp
   Custom/custom_command_scripts.cpp
   Custom/custom_creature_scripts.cpp
+  Custom/custom_creature_scrooge.cpp
+  Custom/custom_game_scripts.cpp
 )
 
 message("  -> Prepared: Custom")

@@ -223,7 +223,7 @@ void Thread::setPriority(Priority type)
     int _priority = m_TpEnum.getPriority(type);
     int _ok = ACE_Thread::setprio(m_hThreadHandle, _priority);
     //remove this ASSERT in case you don't want to know is thread priority change was successful or not
-    ASSERT (_ok == 0);
+    //ASSERT (_ok == 0);
 }
 
 void Thread::Sleep(unsigned long msecs)

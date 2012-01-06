@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2011 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2012 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -994,7 +994,7 @@ void SmartScript::ProcessAction(SmartScriptHolder& e, Unit* unit, uint32 var0, u
                         (*itr)->ToUnit()->Mount(e.action.morphOrMount.model);
                 }
                 else
-                    (*itr)->ToUnit()->Unmount();
+                    (*itr)->ToUnit()->Dismount();
             }
 
             delete targets;
@@ -1321,9 +1321,25 @@ void SmartScript::ProcessAction(SmartScriptHolder& e, Unit* unit, uint32 var0, u
             if (!IsSmart())
                 return;
 
-            bool run = e.action.setRun.run ? true : false;
-            CAST_AI(SmartAI, me->AI())->SetRun(run);
-            me->GetMotionMaster()->MovePoint(0, e.target.x, e.target.y, e.target.z);
+            WorldObject* target = NULL;
+
+            if (e.GetTargetType() == SMART_TARGET_CREATURE_RANGE || e.GetTargetType() == SMART_TARGET_CREATURE_GUID ||
+                e.GetTargetType() == SMART_TARGET_CREATURE_DISTANCE || e.GetTargetType() == SMART_TARGET_GAMEOBJECT_RANGE ||
+                e.GetTargetType() == SMART_TARGET_GAMEOBJECT_GUID || e.GetTargetType() == SMART_TARGET_GAMEOBJECT_DISTANCE ||
+                e.GetTargetType() == SMART_TARGET_CLOSEST_CREATURE || e.GetTargetType() == SMART_TARGET_CLOSEST_GAMEOBJECT ||
+                e.GetTargetType() == SMART_TARGET_OWNER_OR_SUMMONER)
+            {
+                ObjectList* targets = GetTargets(e, unit);
+                if (!targets)
+                    return;
+
+                target = targets->front();
+            }
+
+            if(!target)
+                me->GetMotionMaster()->MovePoint(0, e.target.x, e.target.y, e.target.z);
+            else
+                me->GetMotionMaster()->MovePoint(0, target->GetPositionX(), target->GetPositionY(), target->GetPositionZ());
             break;
         }
         case SMART_ACTION_RESPAWN_TARGET:
@@ -1493,7 +1509,7 @@ void SmartScript::ProcessAction(SmartScriptHolder& e, Unit* unit, uint32 var0, u
                     else if (GameObject* goTarget = (*itr)->ToGameObject())
                     {
                         if (IsSmartGO(goTarget))
-                            CAST_AI(SmartGameObjectAI, target->AI())->SetScript9(e, e.action.timedActionList.id, GetLastInvoker());
+                            CAST_AI(SmartGameObjectAI, goTarget->AI())->SetScript9(e, e.action.timedActionList.id, GetLastInvoker());
                     }
                 }
 
@@ -1610,7 +1626,7 @@ void SmartScript::ProcessAction(SmartScriptHolder& e, Unit* unit, uint32 var0, u
                     else if (GameObject* goTarget = (*itr)->ToGameObject())
                     {
                         if (IsSmartGO(goTarget))
-                            CAST_AI(SmartGameObjectAI, target->AI())->SetScript9(e, id, GetLastInvoker());
+                            CAST_AI(SmartGameObjectAI, goTarget->AI())->SetScript9(e, id, GetLastInvoker());
                     }
                 }
 
@@ -1640,7 +1656,7 @@ void SmartScript::ProcessAction(SmartScriptHolder& e, Unit* unit, uint32 var0, u
                     else if (GameObject* goTarget = (*itr)->ToGameObject())
                     {
                         if (IsSmartGO(goTarget))
-                            CAST_AI(SmartGameObjectAI, target->AI())->SetScript9(e, id, GetLastInvoker());
+                            CAST_AI(SmartGameObjectAI, goTarget->AI())->SetScript9(e, id, GetLastInvoker());
                     }
                 }
 
@@ -2595,6 +2611,14 @@ void SmartScript::ProcessEvent(SmartScriptHolder& e, Unit* unit, uint32 var0, ui
             ProcessAction(e, unit, var0, var1);
             break;
         }
+        case SMART_EVENT_GAME_EVENT_START:
+        case SMART_EVENT_GAME_EVENT_END:
+        {
+            if (e.event.gameEvent.gameEventId != var0)
+                return;
+            ProcessAction(e, NULL, var0);
+            break;
+        }
         default:
             sLog->outErrorDb("SmartScript::ProcessEvent: Unhandled Event type %u", e.GetEventType());
             break;
@@ -2996,7 +3020,9 @@ void SmartScript::SetScript9(SmartScriptHolder& e, uint32 entry)
         mResumeActionList = e.action.timedActionList.dontResume ? false : true;
         InitTimer((*i));
     }
-}Unit* SmartScript::GetLastInvoker()
+}
+
+Unit* SmartScript::GetLastInvoker()
 {
     return ObjectAccessor::FindUnit(mLastInvoker);
 }

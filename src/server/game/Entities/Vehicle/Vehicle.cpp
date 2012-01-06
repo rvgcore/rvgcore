@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2011 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2012 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -341,7 +341,7 @@ bool Vehicle::AddPassenger(Unit* unit, int8 seatId)
         }
     }
 
-    if (seat->second.SeatInfo->m_flags && !(seat->second.SeatInfo->m_flags & VEHICLE_SEAT_FLAG_UNK11))
+    if (seat->second.SeatInfo->m_flags && !(seat->second.SeatInfo->m_flags & VEHICLE_SEAT_FLAG_UNK1))
         unit->AddUnitState(UNIT_STAT_ONVEHICLE);
 
     unit->AddUnitMovementFlag(MOVEMENTFLAG_ONTRANSPORT);

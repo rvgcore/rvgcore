@@ -1231,6 +1231,7 @@ void AddSC_custom_commandscript();
 void AddSC_custom_creature_scripts();
 void AddSC_custom_boss_scrooge();
 void AddSC_custom_gamescript();
+void AddSC_custom_spell_scripts();
 #endif
 
 void AddCustomScripts()
@@ -1242,5 +1243,6 @@ void AddCustomScripts()
 	AddSC_custom_creature_scripts();
 	AddSC_custom_boss_scrooge();
 	AddSC_custom_gamescript();
+	AddSC_custom_spell_scripts();
 #endif
 }

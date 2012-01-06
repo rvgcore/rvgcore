@@ -15,6 +15,7 @@ set(scripts_STAT_SRCS
   Custom/custom_creature_scripts.cpp
   Custom/custom_creature_scrooge.cpp
   Custom/custom_game_scripts.cpp
+  Custom/custom_spell_scripts.cpp
 )
 
 message("  -> Prepared: Custom")

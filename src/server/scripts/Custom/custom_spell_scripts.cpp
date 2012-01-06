@@ -3960,43 +3960,7 @@ public:
 	}
 };
 
-class item_water_bucket : public ItemScript
-{
-public:
 
-	item_water_bucket() : ItemScript("item_water_bucket") { }
-
-	bool OnUse(Player* player, Item* item, SpellCastTargets const& targets)
-	{
-		if (Creature* dummy = player->SummonCreature(NPC_FIRE_DUMMY, targets.GetDst()->GetPositionX(), targets.GetDst()->GetPositionY(), targets.GetDst()->GetPositionZ(), 0.0f, TEMPSUMMON_TIMED_DESPAWN, 500))
-		{
-			std::list<Creature*> firesList;
-			Trinity::AllCreaturesOfEntryInRange checker(dummy, NPC_HEADLESS_FIRE, 3.0f);
-			Trinity::CreatureListSearcher<Trinity::AllCreaturesOfEntryInRange> searcher(dummy, firesList, checker);
-			player->VisitNearbyObject(3.0f, searcher);
-
-			if (firesList.empty())
-			{
-				// Just some extra checks...
-				Creature* fire = dummy->FindNearestCreature(NPC_HEADLESS_FIRE, 3.0f, true);
-				if (fire && fire->isAlive())
-					fire->AI()->SetGUID(player->GetGUID(), EVENT_FIRE_HIT_BY_BUCKET);
-				else if (Player* friendPlr = dummy->SelectNearestPlayer(3.0f))
-				{
-					if (friendPlr->IsFriendlyTo(player) && friendPlr->isAlive())
-						player->CastSpell(friendPlr, SPELL_CREATE_WATER_BUCKET, true);
-				}
-				else
-					return false;
-			}
-
-			for (std::list<Creature*>::const_iterator i = firesList.begin(); i != firesList.end(); ++i)
-				if ((*i) && (*i)->isAlive())
-					(*i)->AI()->SetGUID(player->GetGUID(), EVENT_FIRE_HIT_BY_BUCKET);
-		}
-		return false;
-	}
-};
 
 class npc_halloween_fire : public CreatureScript
 {
@@ -4360,74 +4324,7 @@ public:
 	}
 };
 
-class npc_halloween_orphan_matron : public CreatureScript
-{
-public:
-	npc_halloween_orphan_matron() : CreatureScript("npc_halloween_orphan_matron") { }
 
-	uint64 _headlessHoresemanGUID;
-
-	bool OnGossipHello(Player* player, Creature* me)
-	{
-		player->PrepareQuestMenu(me->GetGUID());
-
-		if (Creature* horseman = me->GetCreature(*me, _headlessHoresemanGUID))
-		{
-			QuestMenu &qm = player->PlayerTalkClass->GetQuestMenu();
-			QuestMenu qm2;
-
-			uint32 quest1 = player->GetTeam() == ALLIANCE ? QUEST_LET_THE_FIRES_COME_A : QUEST_LET_THE_FIRES_COME_H;
-			uint32 quest2 = player->GetTeam() == ALLIANCE ? QUEST_STOP_FIRES_A : QUEST_STOP_FIRES_H;
-
-			// Copy current quest menu ignoring some quests
-			for (uint32 i = 0; i<qm.GetMenuItemCount(); ++i)
-			{
-				if (qm.GetItem(i).QuestId == quest1 || qm.GetItem(i).QuestId == quest2)
-					continue;
-
-				qm2.AddMenuItem(qm.GetItem(i).QuestId, qm.GetItem(i).QuestIcon);
-			}
-
-			if (player->GetQuestStatus(quest1) == QUEST_STATUS_NONE)
-			{
-				if (player->GetQuestStatus(quest2) == QUEST_STATUS_NONE)
-					qm2.AddMenuItem(quest2, 2);
-				else if (player->GetQuestStatus(quest2) != QUEST_STATUS_REWARDED)
-					qm2.AddMenuItem(quest2, 4);
-			}
-			else
-				if (player->GetQuestStatus(quest1) != QUEST_STATUS_REWARDED)
-					qm2.AddMenuItem(quest1, 4);
-
-			qm.ClearMenu();
-
-			for (uint32 i = 0; i<qm2.GetMenuItemCount(); ++i)
-				qm.AddMenuItem(qm2.GetItem(i).QuestId, qm2.GetItem(i).QuestIcon);
-		}
-
-		player->SEND_GOSSIP_MENU(player->GetGossipTextId(me), me->GetGUID());
-		return true;
-	}
-
-	bool OnQuestAccept(Player* player, Creature* me, Quest const* quest)
-	{
-		if (!(me->GetAreaId() == 87 || me->GetAreaId() == 362))
-			return true;
-
-		if (quest->GetQuestId() == QUEST_LET_THE_FIRES_COME_A || quest->GetQuestId() == QUEST_LET_THE_FIRES_COME_H)
-		{
-			Creature* horseman = me->GetCreature(*me, _headlessHoresemanGUID);
-
-			if (!horseman)
-			{
-				sLog->outBasic("HEADLESS HORSEMAN BUG TRACKING. SUMMON: GUID Player: %u. Area %u.", player->GetGUID(), player->GetAreaId());
-				if (Creature* newHorseman = player->SummonCreature(NPC_SHADE_HORSEMAN, me->GetPositionX(), me->GetPositionY(), me->GetPositionZ() + 20.0f, 0, TEMPSUMMON_DEAD_DESPAWN, 180000))
-					_headlessHoresemanGUID = newHorseman->GetGUID();
-			}
-		}
-		return true;
-	}
-};
 
 /*############
 # Quest 11472
@@ -5092,10 +4989,8 @@ void AddSC_custom_spell_scripts()
 	new at_wickerman_festival();
 	new spell_halloween_wand();
 	new go_wickerman_ember();
-	new item_water_bucket();
 	new npc_halloween_fire();
 	new npc_shade_horseman();
-	new npc_halloween_orphan_matron();
 	new npc_attracted_reef_bull();
 	new spell_anuniaqs_net();
 	new npc_wild_turkey();

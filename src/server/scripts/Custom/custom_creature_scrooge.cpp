@@ -84,7 +84,15 @@ struct boss_christmasAI : public ScriptedAI
 							c->Respawn();
 							GhostTimer = 60000;
 						}
-						else GhostTimer -= diff;
+						else
+						{
+							GhostTimer -= diff;
+
+							if (GhostTimer == 0)
+								GhostTimer=60000;
+
+							return NULL;
+						}
 					}
 				}
 			}
@@ -104,7 +112,7 @@ struct boss_christmasAI : public ScriptedAI
 				if (Creature* c = *iter)
 				{
 					if (c->isDead()) _checker = false;
-					else _checker =true;
+					else return true;
 				}
 			}
 

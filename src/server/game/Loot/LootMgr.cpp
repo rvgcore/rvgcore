@@ -433,7 +433,8 @@ bool Loot::FillLoot(uint32 lootId, LootStore const& store, Player* lootOwner, bo
     Group* group = lootOwner->GetGroup();
     if (!personal && group)
     {
-        roundRobinPlayer = lootOwner->GetGUID();
+        // roundRobinPlayer = lootOwner->GetGUID();
+    	roundRobinPlayer = 0;
 
         for (GroupReference* itr = group->GetFirstMember(); itr != NULL; itr = itr->next())
             if (Player* player = itr->getSource())   // should actually be looted object instead of lootOwner but looter has to be really close so doesnt really matter

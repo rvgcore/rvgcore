@@ -1523,6 +1523,7 @@ void Group::UpdateLooterGuid(WorldObject* pLootedObject, bool ifneed)
     switch (GetLootMethod())
     {
         case MASTER_LOOT:
+        case GROUP_LOOT:
         case FREE_FOR_ALL:
             return;
         default:

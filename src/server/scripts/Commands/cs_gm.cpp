@@ -156,11 +156,7 @@ public:
     static bool HandleGMListFullCommand(ChatHandler* handler, char const* /*args*/)
     {
         ///- Get the accounts with GM Level >0
-<<<<<<< HEAD
-        QueryResult result = LoginDatabase.PQuery("SELECT a.username, aa.gmlevel FROM account a, account_access aa WHERE a.id=aa.id AND aa.gmlevel >= %u", SEC_GAMEMASTER);
-=======
         QueryResult result = LoginDatabase.PQuery("SELECT a.username, aa.gmlevel FROM account a, account_access aa WHERE a.id=aa.id AND aa.gmlevel >= %u AND (aa.realmid = -1 OR aa.realmid = %u)", SEC_MODERATOR, realmID);
->>>>>>> Scripts/Commands: Adjust .pinfo and .gm list to respect the realmid in account_access table.
         if (result)
         {
             handler->SendSysMessage(LANG_GMLIST);

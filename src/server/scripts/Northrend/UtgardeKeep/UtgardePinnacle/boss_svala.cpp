@@ -94,6 +94,11 @@ enum SvalaPhase
     SVALADEAD
 };
 
+enum SvalaPoint
+{
+    POINT_FALL_GROUND = 1,
+};
+
 #define DATA_INCREDIBLE_HULK 2043
 
 static const float spectatorWP[2][3] = 
@@ -102,14 +107,7 @@ static const float spectatorWP[2][3] =
     {297.69f,-275.81f,86.36f}
 };
 
-static Position RitualChannelerPos[]=
-{
-    {296.42f, -355.01f, 90.94f, 1.58f},
-    {302.36f, -352.01f, 90.54f, 2.20f},
-    {291.39f, -352.01f, 90.54f, 0.91f}
-};
 static Position ArthasPos = { 295.81f, -366.16f, 92.57f, 1.58f };
-static Position SvalaPos = { 296.632f, -346.075f, 90.6307f, 1.58f };
 
 class boss_svala : public CreatureScript
 {
@@ -256,38 +254,29 @@ public:
                 if (Phase == SACRIFICING)
                     SetEquipmentSlots(false, EQUIP_UNEQUIP, EQUIP_NO_CHANGE, EQUIP_NO_CHANGE);
 
-                me->GetPosition(x, y, z);
-                z = me->GetMap()->GetHeight(x, y, z, true, 50);
+                damage = 0;
+                Phase = SVALADEAD;
+                me->InterruptNonMeleeSpells(true);
+                me->RemoveAllAuras();
+                me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+                me->SetHealth(1);
 
-                if (me->GetPositionZ() > z)
-                {
-                    damage = 0;
-                    Phase = SVALADEAD;
-                    me->InterruptNonMeleeSpells(true);
-                    me->RemoveAllAuras();
-                    me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
-                    me->SetHealth(1);
-
-                    SetCombatMovement(false);
-                    me->HandleEmoteCommand(EMOTE_ONESHOT_FLYDEATH);
-                    me->GetMotionMaster()->MoveFall(z, 1);
-                }
+                SetCombatMovement(false);
+                me->HandleEmoteCommand(EMOTE_ONESHOT_FLYDEATH);
+                me->GetMotionMaster()->MoveFall(POINT_FALL_GROUND);
             }
         }
 
         void MovementInform(uint32 motionType, uint32 pointId)
         {
-            if (motionType != POINT_MOTION_TYPE)
+            if (motionType != EFFECT_MOTION_TYPE)
                 return;
 
-            if (pointId == 1)
-            {
-                me->Relocate(x, y, z, me->GetOrientation());
+            if (pointId == POINT_FALL_GROUND)
                 me->DealDamage(me, me->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
-            }
         }
 
-        void JustDied(Unit* killer)
+        void JustDied(Unit* /*killer*/)
         {
             summons.DespawnAll();
 
@@ -296,15 +285,15 @@ public:
 
             Talk(SAY_DEATH);
         }
-        
-        void SpellHitTarget(Unit* target, const SpellInfo* spell)
+
+        void SpellHitTarget(Unit* /*target*/, const SpellInfo* spell)
         {
             if (spell->Id == SPELL_RITUAL_STRIKE_EFF_1 && Phase != NORMAL && Phase != SVALADEAD)
             {
                 Phase = NORMAL;
                 SetCombatMovement(true);
 
-                if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 300, true))
+                if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 300.0f, true))
                     me->GetMotionMaster()->MoveChase(target);
             }
         }
@@ -346,7 +335,7 @@ public:
                             {
                                 std::list<Creature*> lspectatorList;
                                 GetCreatureListWithEntryInGrid(lspectatorList, me, CREATURE_SPECTATOR, 100.0f);
-                                for(std::list<Creature*>::iterator itr = lspectatorList.begin(); itr != lspectatorList.end(); ++itr)
+                                for (std::list<Creature*>::iterator itr = lspectatorList.begin(); itr != lspectatorList.end(); ++itr)
                                 {
                                     if ((*itr)->isAlive())
                                     {
@@ -413,7 +402,8 @@ public:
                             Phase = NORMAL;
                             break;
                     }
-                } else introTimer -= diff;
+                }
+                else introTimer -= diff;
 
                 return;
             }
@@ -527,9 +517,9 @@ public:
 
     struct npc_ritual_channelerAI : public Scripted_NoMovementAI
     {
-        npc_ritual_channelerAI(Creature* c) :Scripted_NoMovementAI(c)
+        npc_ritual_channelerAI(Creature* creature) :Scripted_NoMovementAI(creature)
         {
-            instance = c->GetInstanceScript();
+            instance = creature->GetInstanceScript();
         }
 
         InstanceScript* instance;
@@ -574,7 +564,7 @@ public:
 
     struct npc_spectatorAI : public ScriptedAI
     {
-        npc_spectatorAI(Creature* c) : ScriptedAI(c) { }
+        npc_spectatorAI(Creature* creature) : ScriptedAI(creature) { }
 
         void Reset() { }
 

@@ -40,8 +40,8 @@ void CalendarInvite::Init()
     _invitee = 0;
     _senderGUID = 0;
     _statusTime = 0;
-    _status = 0;
-    _rank = 0;
+    _status = CALENDAR_STATUS_INVITED; // default (0)?
+    _rank = CALENDAR_RANK_PLAYER;
     _text = "";
 }
 

@@ -397,7 +397,7 @@ public:
 		void SetGUID(uint64 guid, int32 id)
 		{
 			movementStarted = true;
-			me->SetFlag(UNIT_FIELD_FLAGS,UNIT_FLAG_OOC_NOT_ATTACKABLE);
+			me->SetFlag(UNIT_FIELD_FLAGS,UNIT_FLAG_NON_ATTACKABLE);
 			me->SetReactState(REACT_PASSIVE);
 			me->SetUnitMovementFlags(MOVEMENTFLAG_WALKING);
 			me->GetMotionMaster()->MovePoint(0, KamarosWp[0]);
@@ -1690,7 +1690,7 @@ public:
 					pMalygos = pSumm;
 					pSumm->SetFlying(true);
 					pSumm->SetReactState(REACT_PASSIVE);
-					pSumm->SetFlag(UNIT_FIELD_FLAGS,UNIT_FLAG_OOC_NOT_ATTACKABLE);
+					pSumm->SetFlag(UNIT_FIELD_FLAGS,UNIT_FLAG_NON_ATTACKABLE);
 					pSumm->SetFloatValue(OBJECT_FIELD_SCALE_X, 0.4f);
 					DoScriptText(YELL_MALYGOS_2, pMalygos);
 					pMalygos->SetUInt64Value(UNIT_FIELD_TARGET, me->GetGUID());
@@ -1957,7 +1957,7 @@ public:
 				return;
 
 			// check if aura needs to be removed
-			if (!target->FindNearestGameObject(GO_RIBBON_POLE, 20.0f) || !target->HasUnitState(UNIT_STAT_CASTING))
+			if (!target->FindNearestGameObject(GO_RIBBON_POLE, 20.0f) || !target->HasUnitState(UNIT_STATE_CASTING))
 			{
 				target->InterruptNonMeleeSpells(false);
 				target->RemoveAurasDueToSpell(GetId());
@@ -2903,7 +2903,7 @@ public:
 		void Reset()
 		{
 			me->SetReactState(REACT_PASSIVE);
-			me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_OOC_NOT_ATTACKABLE);
+			me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
 			CorruptionTime = 5000;
 			QuestGiverFound = false;
 		}
@@ -4106,7 +4106,7 @@ public:
 
 			me->Mount(25159);
 			me->SetReactState(REACT_PASSIVE);
-			me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_OOC_NOT_ATTACKABLE | UNIT_FLAG_DISABLE_MOVE);
+			me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_DISABLE_MOVE);
 			me->AddUnitMovementFlag(MOVEMENTFLAG_ONTRANSPORT | MOVEMENTFLAG_LEVITATING);
 
 			events.ScheduleEvent(EVENT_HORSEMAN_LAUGHS, urand(5000, 10000));
@@ -4169,7 +4169,7 @@ public:
 			{
 				me->Dismount();
 				me->SetReactState(REACT_AGGRESSIVE);
-				me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_OOC_NOT_ATTACKABLE | UNIT_FLAG_DISABLE_MOVE);
+				me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_DISABLE_MOVE);
 				me->RemoveUnitMovementFlag(MOVEMENTFLAG_ONTRANSPORT | MOVEMENTFLAG_LEVITATING);
 				events.ScheduleEvent(EVENT_HORSEMAN_CLEAVE, urand(5000, 10000));
 			}

@@ -45,7 +45,7 @@ struct boss_christmasAI : public ScriptedAI
 	{
 
 		GhostTimer = 60000;
-		me->ClearUnitState(UNIT_STAT_STUNNED);
+		me->ClearUnitState(UNIT_STATE_STUNNED);
 		EnrageTimer = 15*60000;
 		_checker = true;
 	}

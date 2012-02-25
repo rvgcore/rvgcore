@@ -209,7 +209,7 @@ struct CreatureBaseStats
     static CreatureBaseStats const* GetBaseStats(uint8 level, uint8 unitClass);
 };
 
-typedef UNORDERED_MAP<uint16, CreatureBaseStats> CreatureBaseStatsMap;
+typedef UNORDERED_MAP<uint16, CreatureBaseStats> CreatureBaseStatsContainer;
 
 struct CreatureLocale
 {
@@ -512,7 +512,7 @@ class Creature : public Unit, public GridObject<Creature>, public MapCreature
 
         uint8 getLevelForTarget(WorldObject const* target) const; // overwrite Unit::getLevelForTarget for boss level support
 
-        bool IsInEvadeMode() const { return HasUnitState(UNIT_STAT_EVADE); }
+        bool IsInEvadeMode() const { return HasUnitState(UNIT_STATE_EVADE); }
 
         bool AIM_Initialize(CreatureAI* ai = NULL);
         void Motion_Initialize();
@@ -520,8 +520,8 @@ class Creature : public Unit, public GridObject<Creature>, public MapCreature
         void AI_SendMoveToPacket(float x, float y, float z, uint32 time, uint32 MovementFlags, uint8 type);
         CreatureAI* AI() const { return (CreatureAI*)i_AI; }
 
-        void SetWalk(bool enable);
-        void SetLevitate(bool enable);
+        bool SetWalk(bool enable);
+        bool SetLevitate(bool enable);
 
         uint32 GetShieldBlockValue() const                  //dunno mob block value
         {
@@ -721,7 +721,6 @@ class Creature : public Unit, public GridObject<Creature>, public MapCreature
 
         static float _GetHealthMod(int32 Rank);
 
-        uint32 m_lootMoney;
         uint64 m_lootRecipient;
         uint32 m_lootRecipientGroup;
 

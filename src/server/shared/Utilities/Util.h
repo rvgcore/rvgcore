@@ -24,6 +24,11 @@
 #include <string>
 #include <vector>
 
+#ifdef USE_SFMT_FOR_RNG
+    // Initialize SFMT before first use, if enabled.
+    void init_sfmt();
+#endif
+
 // Searcher for map of structs
 template<typename T, class S> struct Finder
 {
@@ -378,6 +383,7 @@ bool IsIPAddress(char const* ipaddress);
 uint32 CreatePIDFile(const std::string& filename);
 
 void hexEncodeByteArray(uint8* bytes, uint32 arrayLen, std::string& result);
+std::string ByteArrayToHexStr(uint8* bytes, uint32 length);
 #endif
 
 //handler for operations on large flags

@@ -31,7 +31,6 @@ Script Data End */
 #include "eye_of_eternity.h"
 #include "ScriptedEscortAI.h"
 
-// not implemented
 enum Achievements
 {
     ACHIEV_TIMED_START_EVENT                      = 20387,
@@ -242,6 +241,9 @@ public:
             _cannotMove = true;
 
             me->SetFlying(true);
+            
+            if (instance)
+                instance->DoStopTimedAchievement(ACHIEVEMENT_TIMED_TYPE_EVENT, ACHIEV_TIMED_START_EVENT);
         }
 
         uint32 GetData(uint32 data)
@@ -269,7 +271,7 @@ public:
         {
             me->SetHomePosition(_homePosition);
 
-            me->AddUnitMovementFlag(MOVEMENTFLAG_LEVITATING);
+            me->SetLevitate(true);
 
             BossAI::EnterEvadeMode();
 
@@ -352,14 +354,17 @@ public:
         {
             _EnterCombat();
 
-            me->RemoveUnitMovementFlag(MOVEMENTFLAG_LEVITATING);
+            me->SetLevitate(false);
             me->SetFlying(false);
 
             me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
 
             Talk(SAY_AGGRO_P_ONE);
 
-            DoCast(SPELL_BERSEKER);
+            DoCast(SPELL_BERSEKER); // periodic aura, first tick in 10 minutes
+            
+            if (instance)
+                instance->DoStartTimedAchievement(ACHIEVEMENT_TIMED_TYPE_EVENT, ACHIEV_TIMED_START_EVENT);
         }
 
         void KilledUnit(Unit* who)
@@ -407,7 +412,7 @@ public:
 
         void PrepareForVortex()
         {
-            me->AddUnitMovementFlag(MOVEMENTFLAG_LEVITATING);
+            me->SetLevitate(true);
             me->SetFlying(true);
 
             me->GetMotionMaster()->MovementExpired();
@@ -456,7 +461,7 @@ public:
         {
             SetPhase(PHASE_TWO, true);
 
-            me->AddUnitMovementFlag(MOVEMENTFLAG_LEVITATING);
+            me->SetLevitate(true);
             me->SetFlying(true);
 
             me->GetMotionMaster()->MoveIdle();
@@ -523,7 +528,7 @@ public:
                 return;
 
             // We can't cast if we are casting already.
-            if (me->HasUnitState(UNIT_STAT_CASTING))
+            if (me->HasUnitState(UNIT_STATE_CASTING))
                 return;
 
             while (uint32 eventId = events.ExecuteEvent())
@@ -699,7 +704,7 @@ class spell_malygos_vortex_visual : public SpellScriptLoader
                         // Anyway even with this issue, the boss does not enter in evade mode - this prevents iterate an empty list in the next vortex execution.
                         malygos->SetInCombatWithZone();
 
-                        malygos->RemoveUnitMovementFlag(MOVEMENTFLAG_LEVITATING);
+                        malygos->SetLevitate(false);
                         malygos->SetFlying(false);
 
                         malygos->GetMotionMaster()->MoveChase(caster->getVictim());

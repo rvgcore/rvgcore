@@ -16,6 +16,7 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <iostream>
 #include "Util.h"
 #include "utf8.h"
 #ifdef USE_SFMT_FOR_RNG
@@ -29,6 +30,11 @@
 #ifdef USE_SFMT_FOR_RNG
 typedef ACE_TSS<SFMTRand> SFMTRandTSS;
 static SFMTRandTSS sfmtRand;
+
+void init_sfmt()
+{
+    sfmtRand->RandomInit((int)(time(0)));
+}
 
 int32 irand(int32 min, int32 max)
 {
@@ -529,3 +535,15 @@ void hexEncodeByteArray(uint8* bytes, uint32 arrayLen, std::string& result)
     result = ss.str();
 }
 
+std::string ByteArrayToHexStr(uint8* bytes, uint32 length)
+{
+    std::ostringstream ss;
+    for (uint32 i = 0; i < length; ++i)
+    {
+        char buffer[4];
+        sprintf(buffer, "%02X ", bytes[i]);
+        ss << buffer;
+    }
+
+    return ss.str();
+}

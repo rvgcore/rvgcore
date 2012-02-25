@@ -82,7 +82,7 @@ public:
         boss_taldaramAI(Creature* c) : ScriptedAI(c)
         {
             instance = c->GetInstanceScript();
-            me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_OOC_NOT_ATTACKABLE);
+            me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC);
             me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
         }
 
@@ -314,7 +314,7 @@ public:
         {
             if (!instance)
                 return;
-            me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_OOC_NOT_ATTACKABLE);
+            me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC);
             me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
             me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
             me->RemoveAurasDueToSpell(SPELL_BEAM_VISUAL);
@@ -389,8 +389,10 @@ public:
     bool OnGossipHello(Player* /*player*/, GameObject* pGO)
     {
         InstanceScript* instance = pGO->GetInstanceScript();
+        if (!instance)
+            return true;
 
-        Creature* pPrinceTaldaram = Unit::GetCreature(*pGO, instance ? instance->GetData64(DATA_PRINCE_TALDARAM) : 0);
+        Creature* pPrinceTaldaram = Unit::GetCreature(*pGO, instance->GetData64(DATA_PRINCE_TALDARAM));
         if (pPrinceTaldaram && pPrinceTaldaram->isAlive())
         {
             // maybe these are hacks :(

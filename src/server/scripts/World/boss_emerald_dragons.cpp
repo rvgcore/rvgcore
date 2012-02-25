@@ -144,7 +144,7 @@ struct emerald_dragonAI : public WorldBossAI
 
         events.Update(diff);
 
-        if (me->HasUnitState(UNIT_STAT_CASTING))
+        if (me->HasUnitState(UNIT_STATE_CASTING))
             return;
 
         while (uint32 eventId = events.ExecuteEvent())
@@ -198,7 +198,7 @@ class npc_dream_fog : public CreatureScript
                         me->GetMotionMaster()->MoveRandom(25.0f);
                     }
                     // Seeping fog movement is slow enough for a player to be able to walk backwards and still outpace it
-                    me->AddUnitMovementFlag(MOVEMENTFLAG_WALKING);
+                    me->SetWalk(true);
                     me->SetSpeed(MOVE_WALK, 0.75f);
                 }
                 else

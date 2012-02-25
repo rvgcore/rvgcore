@@ -101,7 +101,7 @@ public:
 
             events.Update(diff);
 
-            if (me->HasUnitState(UNIT_STAT_CASTING))
+            if (me->HasUnitState(UNIT_STATE_CASTING))
                 return;
 
             while (uint32 eventId = events.ExecuteEvent())
@@ -169,7 +169,8 @@ class npc_azure_ring_captain : public CreatureScript
             {
                 targetGUID = 0;
 
-                me->AddUnitMovementFlag(MOVEMENTFLAG_WALKING | MOVEMENTFLAG_FLYING);
+                me->SetWalk(true);
+                me->AddUnitMovementFlag(MOVEMENTFLAG_FLYING);
                 me->SetReactState(REACT_AGGRESSIVE);
             }
 
@@ -214,7 +215,7 @@ class npc_azure_ring_captain : public CreatureScript
                                 if (Unit* victim = varos->AI()->SelectTarget(SELECT_TARGET_RANDOM, 0))
                                 {
                                     me->SetReactState(REACT_PASSIVE);
-                                    me->RemoveUnitMovementFlag(MOVEMENTFLAG_WALKING);
+                                    me->SetWalk(false);
                                     me->GetMotionMaster()->MovePoint(ACTION_CALL_DRAGON_EVENT, victim->GetPositionX(), victim->GetPositionY(), victim->GetPositionZ() + 20.0f);
                                     targetGUID = victim->GetGUID();
                                 }
@@ -256,10 +257,10 @@ class spell_varos_centrifuge_shield : public SpellScriptLoader
                 {
                     // flags taken from sniffs
                     // UNIT_FLAG_UNK_9 -> means passive but it is not yet implemented in core
-                    if (caster->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_UNK_15|UNIT_FLAG_PASSIVE|UNIT_FLAG_OOC_NOT_ATTACKABLE|UNIT_FLAG_UNK_6))
+                    if (caster->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_UNK_15|UNIT_FLAG_IMMUNE_TO_NPC|UNIT_FLAG_IMMUNE_TO_PC|UNIT_FLAG_UNK_6))
                     {
                         caster->ToCreature()->SetReactState(REACT_PASSIVE);
-                        caster->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_UNK_15|UNIT_FLAG_PASSIVE|UNIT_FLAG_OOC_NOT_ATTACKABLE|UNIT_FLAG_UNK_6);
+                        caster->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_UNK_15|UNIT_FLAG_IMMUNE_TO_NPC|UNIT_FLAG_IMMUNE_TO_PC|UNIT_FLAG_UNK_6);
                     }
                 }
             }
@@ -269,7 +270,7 @@ class spell_varos_centrifuge_shield : public SpellScriptLoader
                 if (Unit* caster = GetCaster())
                 {
                     caster->ToCreature()->SetReactState(REACT_AGGRESSIVE);
-                    caster->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_UNK_15|UNIT_FLAG_PASSIVE|UNIT_FLAG_OOC_NOT_ATTACKABLE|UNIT_FLAG_UNK_6);
+                    caster->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_UNK_15|UNIT_FLAG_IMMUNE_TO_NPC|UNIT_FLAG_IMMUNE_TO_PC|UNIT_FLAG_UNK_6);
                 }
             }
 

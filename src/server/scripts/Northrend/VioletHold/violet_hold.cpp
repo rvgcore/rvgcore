@@ -363,7 +363,7 @@ public:
                                 {
                                     if (Creature* pGuard = *itr)
                                     {
-                                        pGuard->RemoveUnitMovementFlag(MOVEMENTFLAG_WALKING);
+                                        pGuard->SetWalk(false);
                                         pGuard->GetMotionMaster()->MovePoint(0, MovePosition);
                                     }
                                 }
@@ -443,7 +443,7 @@ public:
             if (instance && !uiBoss)
                 uiBoss = instance->GetData(DATA_WAVE_COUNT) == 6 ? instance->GetData(DATA_FIRST_BOSS) : instance->GetData(DATA_SECOND_BOSS);
             me->SetReactState(REACT_PASSIVE);
-            me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_OOC_NOT_ATTACKABLE|UNIT_FLAG_NON_ATTACKABLE);
+            me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC|UNIT_FLAG_NON_ATTACKABLE);
             me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
         }
 

@@ -647,7 +647,7 @@ class npc_expedition_commander : public CreatureScript
                             for (uint8 n = 0; n < RAID_MODE(2, 4); n++)
                             {
                                 Engineer[n] = me->SummonCreature(NPC_ENGINEER, PosEngSpawn, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3000);
-                                Engineer[n]->RemoveUnitMovementFlag(MOVEMENTFLAG_WALKING);
+                                Engineer[n]->SetWalk(false);
                                 Engineer[n]->SetSpeed(MOVE_RUN, 0.5f);
                                 Engineer[n]->SetHomePosition(PosEngRepair[n]);
                                 Engineer[n]->GetMotionMaster()->MoveTargetedHome();
@@ -660,7 +660,7 @@ class npc_expedition_commander : public CreatureScript
                             for (uint8 n = 0; n < 4; n++)
                             {
                                 Defender[n] = me->SummonCreature(NPC_DEFENDER, PosDefSpawn[n], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3000);
-                                Defender[n]->RemoveUnitMovementFlag(MOVEMENTFLAG_WALKING);
+                                Defender[n]->SetWalk(false);
                                 Defender[n]->SetHomePosition(PosDefCombat[n]);
                                 Defender[n]->GetMotionMaster()->MoveTargetedHome();
                             }
@@ -668,7 +668,7 @@ class npc_expedition_commander : public CreatureScript
                             break;
                         case 4:
                             for (uint8 n = 0; n < RAID_MODE(2, 4); n++)
-                                Engineer[n]->SetUInt32Value(UNIT_NPC_EMOTESTATE, EMOTE_STATE_USESTANDING);
+                                Engineer[n]->SetUInt32Value(UNIT_NPC_EMOTESTATE, EMOTE_STATE_USE_STANDING);
                             for (uint8 n = 0; n < 4; ++n)
                                 Defender[n]->SetUInt32Value(UNIT_NPC_EMOTESTATE, EMOTE_STATE_READY2H);
                             me->MonsterYell(SAY_AGGRO_2, LANG_UNIVERSAL, 0);

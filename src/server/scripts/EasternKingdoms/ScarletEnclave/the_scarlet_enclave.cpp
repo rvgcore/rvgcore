@@ -74,7 +74,7 @@ public:
                 switch (phase)
                 {
                     case 0:
-                        me->RemoveUnitMovementFlag(MOVEMENTFLAG_WALKING);
+                        me->SetWalk(false);
                         me->HandleEmoteCommand(EMOTE_STATE_FLYGRABCLOSED);
                         FlyBackTimer = 500;
                         break;
@@ -91,7 +91,7 @@ public:
                     case 2:
                         if (!player->isRessurectRequested())
                         {
-                            me->HandleEmoteCommand(EMOTE_ONESHOT_CUSTOMSPELL01);
+                            me->HandleEmoteCommand(EMOTE_ONESHOT_CUSTOM_SPELL_01);
                             DoCast(player, SPELL_REVIVE, true);
                             me->MonsterWhisper(VALK_WHISPER, player->GetGUID());
                         }

@@ -44,8 +44,8 @@ enum blyAndCrewFactions
 
 enum blySays
 {
-    SAY_1 = -1209002,
-    SAY_2 = -1209003
+    SAY_1 = 0,
+    SAY_2 = 1
 };
 
 enum blySpells
@@ -133,11 +133,11 @@ public:
                             //weegli doesn't fight - he goes & blows up the door
                             if (Creature* pWeegli = instance->instance->GetCreature(instance->GetData64(ENTRY_WEEGLI)))
                                 pWeegli->AI()->DoAction(0);
-                            DoScriptText(SAY_1, me);
+                            Talk(SAY_1);
                             Text_Timer = 5000;
                             break;
                         case 2:
-                            DoScriptText(SAY_2, me);
+                            Talk(SAY_2);
                             Text_Timer = 5000;
                             break;
                         case 3:
@@ -204,7 +204,7 @@ void initBlyCrewMember(InstanceScript* instance, uint32 entry, float x, float y,
    if (Creature* crew = instance->instance->GetCreature(instance->GetData64(entry)))
    {
         crew->SetReactState(REACT_AGGRESSIVE);
-        crew->AddUnitMovementFlag(MOVEMENTFLAG_WALKING);
+        crew->SetWalk(true);
         crew->SetHomePosition(x, y, z, 0);
         crew->GetMotionMaster()->MovePoint(1, x, y, z);
         crew->setFaction(FACTION_FREED);

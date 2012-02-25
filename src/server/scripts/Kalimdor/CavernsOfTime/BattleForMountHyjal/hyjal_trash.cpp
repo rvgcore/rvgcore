@@ -459,7 +459,7 @@ public:
                 {
                     trigger->SetVisible(false);
                     trigger->setFaction(me->getFaction());
-                    trigger->AddUnitMovementFlag(MOVEMENTFLAG_LEVITATING);
+                    trigger->SetLevitate(true);
                     trigger->CastSpell(me, SPELL_METEOR, true);
                 }
                 me->GetMotionMaster()->Clear();
@@ -678,7 +678,7 @@ public:
             }
             if (i == LastOverronPos && IsOverrun)
             {
-                me->SetUInt32Value(UNIT_NPC_EMOTESTATE, EMOTE_ONESHOT_ATTACKUNARMED);
+                me->SetUInt32Value(UNIT_NPC_EMOTESTATE, EMOTE_ONESHOT_ATTACK_UNARMED);
                 if ((faction == 0 && LastOverronPos == 17) || (faction == 1 && LastOverronPos == 21))
                 {
                     me->setDeathState(DEAD);
@@ -1176,7 +1176,7 @@ public:
         {
             FrostBreathTimer = 5000;
             MoveTimer = 0;
-            me->AddUnitMovementFlag(MOVEMENTFLAG_LEVITATING);
+            me->SetLevitate(true);
         }
 
         void WaypointReached(uint32 i)
@@ -1200,7 +1200,7 @@ public:
 
             float x, y, z;
             me->GetPosition(x, y, z);
-            z = me->GetMap()->GetHeight(x, y, z);
+            z = me->GetMap()->GetHeight(me->GetPhaseMask(), x, y, z);
             me->GetMotionMaster()->MovePoint(0, x, y, z);
             me->SetPosition(x, y, z, 0);
         }
@@ -1298,7 +1298,7 @@ public:
             Zpos = 10.0f;
             StrikeTimer = 2000+rand()%5000;
             MoveTimer = 0;
-            me->AddUnitMovementFlag(MOVEMENTFLAG_LEVITATING);
+            me->SetLevitate(true);
         }
 
         void WaypointReached(uint32 i)
@@ -1319,7 +1319,7 @@ public:
         {
             float x, y, z;
             me->GetPosition(x, y, z);
-            z = me->GetMap()->GetHeight(x, y, z);
+            z = me->GetMap()->GetHeight(me->GetPhaseMask(), x, y, z);
             me->GetMotionMaster()->MovePoint(0, x, y, z);
             me->SetPosition(x, y, z, 0);
             hyjal_trashAI::JustDied(victim);

@@ -389,7 +389,6 @@ void ObjectMgr::LoadCreatureTemplates()
         return;
     }
 
-    _creatureTemplateStore.rehash(result->GetRowCount());
     uint32 count = 0;
     do
     {
@@ -1105,7 +1104,6 @@ void ObjectMgr::LoadCreatureModelInfo()
         return;
     }
 
-    _creatureModelStore.rehash(result->GetRowCount());
     uint32 count = 0;
 
     do
@@ -1139,7 +1137,9 @@ void ObjectMgr::LoadCreatureModelInfo()
         }
 
         if (modelInfo.combat_reach < 0.1f)
+        {
             modelInfo.combat_reach = DEFAULT_COMBAT_REACH;
+        }
 
         ++count;
     }
@@ -1404,7 +1404,6 @@ void ObjectMgr::LoadCreatures()
                 if (GetMapDifficultyData(i, Difficulty(k)))
                     spawnMasks[i] |= (1 << k);
 
-    _creatureDataStore.rehash(result->GetRowCount());
     uint32 count = 0;
     do
     {
@@ -1421,6 +1420,7 @@ void ObjectMgr::LoadCreatures()
         }
 
         CreatureData& data = _creatureDataStore[guid];
+
         data.id             = entry;
         data.mapid          = fields[ 2].GetUInt32();
         data.displayid      = fields[ 3].GetUInt32();
@@ -1714,7 +1714,6 @@ void ObjectMgr::LoadGameobjects()
                 if (GetMapDifficultyData(i, Difficulty(k)))
                     spawnMasks[i] |= (1 << k);
 
-    _gameObjectDataStore.rehash(result->GetRowCount());
     do
     {
         Field* fields = result->Fetch();
@@ -2086,7 +2085,6 @@ void ObjectMgr::LoadItemTemplates()
         return;
     }
 
-    _itemTemplateStore.rehash(result->GetRowCount());
     uint32 count = 0;
     bool enforceDBCAttributes = sWorld->getBoolConfig(CONFIG_DBC_ENFORCE_ITEM_ATTRIBUTES);
 
@@ -2705,7 +2703,6 @@ void ObjectMgr::LoadItemSetNames()
         return;
     }
 
-    _itemSetNameStore.rehash(result->GetRowCount());
     uint32 count = 0;
 
     do
@@ -5169,7 +5166,6 @@ void ObjectMgr::LoadGossipText()
         sLog->outString();
         return;
     }
-    _gossipTextStore.rehash(result->GetRowCount());
 
     int cic;
 
@@ -6394,7 +6390,6 @@ void ObjectMgr::LoadGameObjectTemplate()
         return;
     }
 
-    _gameObjectTemplateStore.rehash(result->GetRowCount());
     uint32 count = 0;
     do
     {

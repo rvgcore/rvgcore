@@ -598,6 +598,9 @@ MovementGeneratorType MotionMaster::GetMotionSlotType(int slot) const
 
 void MotionMaster::InitTop()
 {
+    if (!_owner)
+        return;
+
     top()->Initialize(*_owner);
     _needInit[_top] = false;
 }

@@ -12703,8 +12703,13 @@ void Unit::setDeathState(DeathState s)
         // remove aurastates allowing special moves
         ClearAllReactives();
         ClearDiminishings();
-        GetMotionMaster()->Clear(false);
-        GetMotionMaster()->MoveIdle();
+
+        if (!isPet() || (isPet() && IsInWorld()))
+        {
+        	GetMotionMaster()->Clear(false);
+        	GetMotionMaster()->MoveIdle();
+        }
+
         StopMoving();
         // without this when removing IncreaseMaxHealth aura player may stuck with 1 hp
         // do not why since in IncreaseMaxHealth currenthealth is checked
@@ -16983,7 +16988,7 @@ void Unit::ChangeSeat(int8 seatId, bool next)
         ASSERT(false);
 }
 
-void Unit::ExitVehicle(Position const* exitPosition)
+void Unit::ExitVehicle(Position const* /*exitPosition*/)
 {
     //! This function can be called at upper level code to initialize an exit from the passenger's side.
     if (!m_vehicle)

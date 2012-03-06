@@ -43,6 +43,155 @@ enum AngryTurkeySpells
 #define SAY_ANGRYTURKEY_DEATH    "Noooooo, Me is turkey sammich!"
 #define SAY_ANGRYTURKEY_MORPH    "Gobble gobble, Me stuff you!"
 
+enum MurkeeSpells
+{
+    SPELL_MAGIC_BARRIER                                     = 38112,
+    SPELL_TOXIC_SPORES                                      = 38575,
+    TOXIC_SPORES_TRIGGER                                    = 22207,
+    SUMMONED_MURLOC                                         = 27649,
+    SPELL_POISON_BOLT_VOLLEY                                = 54098,
+    SPELL_ENTANGLE                                          = 38316,
+    SPELL_WRATH                                             = 20698
+};
+
+
+#define SAY_MURKEE_AGGRO         "Mrglmrglmrglmrgl"
+#define SAY_MURKEE_SLAY          "I am Murloc hear me RwlRwlRwlRwl!"
+#define SAY_MURKEE_DEATH         "Aaaaaughibbrgubugbugrguburgle! me so dead!"
+#define SAY_MURKEE_SUMMON        "Murlocs!"
+
+
+// Murlock Queen Murkee
+
+
+class boss_murkee : public CreatureScript
+{
+public:
+    boss_murkee() : CreatureScript("boss_murkee") { }
+
+    CreatureAI* GetAI(Creature* pCreature) const
+    {
+        return new boss_murkeeAI (pCreature);
+    }
+
+    struct boss_murkeeAI : public ScriptedAI
+    {
+        boss_murkeeAI(Creature *pCreature) : ScriptedAI(pCreature){}
+
+        uint32 Phase2Timer;
+        uint32 Phase1Timer;
+        uint32 SporeTimer;
+        uint32 PoisonTimer;
+        uint32 RootTimer;
+        bool Phase1;
+
+        void Reset()
+        {
+            Phase2Timer = 60000;
+            Phase1Timer = 90000;
+            SporeTimer = 6000;
+            PoisonTimer = 15000;
+            RootTimer = 25000;
+            Phase1 = true;
+        }
+
+        void EnterCombat(Unit* /*who*/)
+        {
+            me->MonsterYell(SAY_MURKEE_AGGRO, LANG_UNIVERSAL, 0);
+        }
+
+        void KilledUnit(Unit* victim)
+        {
+            me->MonsterYell(SAY_MURKEE_SLAY, LANG_UNIVERSAL, 0);
+        }
+
+        void JustDied(Unit* /*killer*/)
+        {
+            me->MonsterYell(SAY_MURKEE_DEATH, LANG_UNIVERSAL, 0);
+        }
+
+        void UpdateAI(const uint32 uiDiff)
+        {
+            if (!UpdateVictim())
+                return;
+
+            // Summon Phase
+            if (Phase2Timer <= uiDiff)
+            {
+                Phase1 = false;
+                me->InterruptNonMeleeSpells(false);
+                me->SetReactState(REACT_PASSIVE);
+                me->AttackStop();
+                me->RemoveAllAuras();
+
+                if (Unit *pTarget = SelectTarget(SELECT_TARGET_RANDOM,0))
+                    for (uint8 i = 1; i <= 3; i++)
+                    {
+                        me->SummonCreature(SUMMONED_MURLOC, pTarget->GetPositionX(), pTarget->GetPositionY(), pTarget->GetPositionZ(), 0, TEMPSUMMON_TIMED_DESPAWN, 60000);
+                    }
+                me->AddAura(SPELL_MAGIC_BARRIER, me);
+                me->MonsterYell(SAY_MURKEE_SUMMON, LANG_UNIVERSAL, 0);
+                Phase2Timer = 90000;
+            } else Phase2Timer -= uiDiff;
+
+            // Normal Phase
+            if (Phase1Timer <= uiDiff)
+            {
+                Phase1 = true;
+                me->InterruptNonMeleeSpells(false);
+                me->SetReactState(REACT_AGGRESSIVE);
+                me->RemoveAurasDueToSpell(SPELL_MAGIC_BARRIER);
+                DoZoneInCombat();
+                if (me->getThreatManager().isThreatListEmpty())
+                    EnterEvadeMode();
+                Phase1Timer = 90000;
+            } else Phase1Timer -= uiDiff;
+
+            if (Phase1)
+            {
+
+                if (SporeTimer <= uiDiff)
+                {
+                    me->InterruptNonMeleeSpells(false);
+                    if (Unit *pTarget = SelectTarget(SELECT_TARGET_RANDOM, 0))
+                    {
+                        Creature* trig = me->SummonCreature(TOXIC_SPORES_TRIGGER, pTarget->GetPositionX(), pTarget->GetPositionY(), pTarget->GetPositionZ(), 0, TEMPSUMMON_TIMED_DESPAWN, 30000);
+                        if (trig)
+                        {
+                            trig->setFaction(14);
+                            trig->CastSpell(trig, SPELL_TOXIC_SPORES,true);
+                        }
+                    }
+                    SporeTimer = 15000;
+                } else SporeTimer -= uiDiff;
+
+
+                if (PoisonTimer <= uiDiff)
+                {
+                    me->InterruptNonMeleeSpells(false);
+                    DoCastAOE(SPELL_POISON_BOLT_VOLLEY);
+                    PoisonTimer = 10000;
+                } else PoisonTimer -= uiDiff;
+
+
+                if (RootTimer <= uiDiff)
+                {
+                    me->InterruptNonMeleeSpells(false);
+                    if (Unit *pTarget = SelectTarget(SELECT_TARGET_RANDOM, 0))
+                        DoCast(pTarget, SPELL_ENTANGLE);
+                    RootTimer = 25000;
+                } else RootTimer -= uiDiff;
+            }
+
+            DoSpellAttackIfReady(SPELL_WRATH);
+        }
+    };
+
+};
+
+
+
+
 // Angry Turkey
 class boss_angry_turkey : public CreatureScript
 {
@@ -258,5 +407,6 @@ void AddSC_custom_creature_scripts()
 {
 	new boss_lys_ladimore;
 	new boss_angry_turkey;
+	new boss_murkee;
 }
 

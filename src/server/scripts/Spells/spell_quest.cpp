@@ -636,6 +636,10 @@ class spell_q12851_going_bearback : public SpellScriptLoader
                 if (Unit* caster = GetCaster())
                 {
                     Unit* target = GetTarget();
+                    // Already in fire
+                    if (target->HasAura(SPELL_ABLAZE))
+                        return;
+                        
                     if (Player* player = caster->GetCharmerOrOwnerPlayerOrPlayerItself())
                     {
                         switch (target->GetEntry())
@@ -833,7 +837,7 @@ class spell_q12659_ahunaes_knife : public SpellScriptLoader
                 Player* caster = GetCaster()->ToPlayer();
                 if (Creature* target = GetHitCreature())
                 {
-                    target->ForcedDespawn();
+                    target->DespawnOrUnsummon();
                     caster->KilledMonsterCredit(NPC_SCALPS_KC_BUNNY, 0);
                 }
             }

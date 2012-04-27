@@ -122,7 +122,7 @@ typedef UNORDERED_MAP<Player*, UpdateData> UpdateDataMapType;
 class Object
 {
     public:
-        virtual ~Object ();
+        virtual ~Object();
 
         bool IsInWorld() const { return m_inWorld; }
 
@@ -227,7 +227,9 @@ class Object
 
         bool HasFlag(uint16 index, uint32 flag) const
         {
-            if (index >= m_valuesCount && !PrintIndexError(index, false)) return false;
+            if (index >= m_valuesCount && !PrintIndexError(index, false))
+                return false;
+
             return (m_uint32Values[index] & flag) != 0;
         }
 
@@ -313,7 +315,7 @@ class Object
         Corpse const* ToCorpse() const { if (GetTypeId() == TYPEID_CORPSE) return (const Corpse*)((Corpse*)this); else return NULL; }
     protected:
 
-        Object ();
+        Object();
 
         void _InitValues();
         void _Create (uint32 guidlow, uint32 entry, HighGuid guidhigh);
@@ -506,6 +508,8 @@ struct MovementInfo
     void AddExtraMovementFlag(uint16 flag) { flags2 |= flag; }
     bool HasExtraMovementFlag(uint16 flag) const { return flags2 & flag; }
 
+    void SetFallTime(uint32 time) { fallTime = time; }
+
     void OutDebug();
 };
 
@@ -681,7 +685,7 @@ class WorldObject : public Object, public WorldLocation
         bool IsInMap(const WorldObject* obj) const
         {
             if (obj)
-                return IsInWorld() && obj->IsInWorld() && (GetMap() == obj->GetMap()) && InSamePhase(obj);
+                return IsInWorld() && obj->IsInWorld() && (GetMap() == obj->GetMap());
             return false;
         }
         bool IsWithinDist3d(float x, float y, float z, float dist) const
@@ -699,7 +703,7 @@ class WorldObject : public Object, public WorldLocation
         }
         bool IsWithinDistInMap(WorldObject const* obj, float dist2compare, bool is3D = true) const
         {
-            return obj && IsInMap(obj) && _IsWithinDist(obj, dist2compare, is3D);
+            return obj && IsInMap(obj) && InSamePhase(obj) && _IsWithinDist(obj, dist2compare, is3D);
         }
         bool IsWithinLOS(float x, float y, float z) const;
         bool IsWithinLOSInMap(const WorldObject* obj) const;
@@ -776,7 +780,8 @@ class WorldObject : public Object, public WorldLocation
                 GetClosePoint(x, y, z, GetObjectSize());
                 ang = GetOrientation();
             }
-            Position pos = {x, y, z, ang};
+            Position pos;
+            pos.Relocate(x, y, z, ang);
             return SummonCreature(id, pos, spwtype, despwtime, 0);
         }
         GameObject* SummonGameObject(uint32 entry, float x, float y, float z, float ang, float rotation0, float rotation1, float rotation2, float rotation3, uint32 respawnTime);
@@ -873,20 +878,6 @@ class WorldObject : public Object, public WorldLocation
 
 namespace Trinity
 {
-    template<class T>
-    void RandomResizeList(std::list<T> &_list, uint32 _size)
-    {
-        size_t list_size = _list.size();
-
-        while (list_size > _size)
-        {
-            typename std::list<T>::iterator itr = _list.begin();
-            std::advance(itr, urand(0, list_size - 1));
-            _list.erase(itr);
-            --list_size;
-        }
-    }
-
     // Binary predicate to sort WorldObjects based on the distance to a reference WorldObject
     class ObjectDistanceOrderPred
     {

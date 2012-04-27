@@ -170,6 +170,7 @@ class npc_azure_ring_captain : public CreatureScript
                 targetGUID = 0;
 
                 me->SetWalk(true);
+                //! HACK: Creature's can't have MOVEMENTFLAG_FLYING
                 me->AddUnitMovementFlag(MOVEMENTFLAG_FLYING);
                 me->SetReactState(REACT_AGGRESSIVE);
             }
@@ -307,7 +308,7 @@ class spell_varos_energize_core_area_enemy : public SpellScriptLoader
 
                 float orientation = CAST_AI(boss_varos::boss_varosAI, varos->AI())->GetCoreEnergizeOrientation();
 
-                for (std::list<Unit*>::iterator itr = targetList.begin() ; itr != targetList.end();)
+                for (std::list<Unit*>::iterator itr = targetList.begin(); itr != targetList.end();)
                 {
                     Position pos;
                     (*itr)->GetPosition(&pos);
@@ -354,7 +355,7 @@ class spell_varos_energize_core_area_entry : public SpellScriptLoader
 
                 float orientation = CAST_AI(boss_varos::boss_varosAI, varos->AI())->GetCoreEnergizeOrientation();
 
-                for (std::list<Unit*>::iterator itr = targetList.begin() ; itr != targetList.end();)
+                for (std::list<Unit*>::iterator itr = targetList.begin(); itr != targetList.end();)
                 {
                     Position pos;
                     (*itr)->GetPosition(&pos);

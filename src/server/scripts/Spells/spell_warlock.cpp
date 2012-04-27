@@ -172,6 +172,19 @@ class spell_warl_create_healthstone : public SpellScriptLoader
                 return true;
             }
 
+            SpellCastResult CheckCast()
+            {
+                if (Player* caster = GetCaster()->ToPlayer())
+                {
+                    uint8 spellRank = sSpellMgr->GetSpellRank(GetSpellInfo()->Id);
+                    ItemPosCountVec dest;
+                    InventoryResult msg = caster->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, iTypes[spellRank - 1][0], 1, NULL);
+                    if (msg != EQUIP_ERR_OK)
+                        return SPELL_FAILED_TOO_MANY_OF_ITEM;
+                }
+                return SPELL_CAST_OK;
+            }
+
             void HandleScriptEffect(SpellEffIndex effIndex)
             {
                 if (Unit* unitTarget = GetHitUnit())
@@ -198,6 +211,7 @@ class spell_warl_create_healthstone : public SpellScriptLoader
             void Register()
             {
                 OnEffectHitTarget += SpellEffectFn(spell_warl_create_healthstone_SpellScript::HandleScriptEffect, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+                OnCheckCast += SpellCheckCastFn(spell_warl_create_healthstone_SpellScript::CheckCast);
             }
         };
 
@@ -380,9 +394,7 @@ class spell_warl_life_tap : public SpellScriptLoader
                 Player* caster = GetCaster()->ToPlayer();
                 if (Unit* target = GetHitUnit())
                 {
-                    SpellInfo const* spellInfo = GetSpellInfo();
-                    float spFactor = 0.0f;
-                    int32 damage = int32(GetEffectValue() + (6.3875 * spellInfo->BaseLevel));
+                    int32 damage = GetEffectValue();
                     int32 mana = int32(damage + (caster->GetUInt32Value(PLAYER_FIELD_MOD_DAMAGE_DONE_POS+SPELL_SCHOOL_SHADOW) * 0.5f));
 
                     // Shouldn't Appear in Combat Log
@@ -449,7 +461,7 @@ class spell_warl_demonic_circle_summon : public SpellScriptLoader
             {
                 if (GameObject* circle = GetTarget()->GetGameObject(GetId()))
                 {
-                    // Here we check if player is in demonic circle teleport range, if so add 
+                    // Here we check if player is in demonic circle teleport range, if so add
                     // WARLOCK_DEMONIC_CIRCLE_ALLOW_CAST; allowing him to cast the WARLOCK_DEMONIC_CIRCLE_TELEPORT.
                     // If not in range remove the WARLOCK_DEMONIC_CIRCLE_ALLOW_CAST.
 

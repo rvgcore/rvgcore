@@ -51,10 +51,10 @@ class npc_beaten_corpse : public CreatureScript
 public:
     npc_beaten_corpse() : CreatureScript("npc_beaten_corpse") { }
 
-    bool OnGossipSelect(Player* player, Creature* creature, uint32 /*uiSender*/, uint32 uiAction)
+    bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action)
     {
         player->PlayerTalkClass->ClearMenus();
-        if (uiAction == GOSSIP_ACTION_INFO_DEF +1)
+        if (action == GOSSIP_ACTION_INFO_DEF +1)
         {
             player->SEND_GOSSIP_MENU(3558, creature->GetGUID());
             player->TalkedToCreature(creature->GetEntry(), creature->GetGUID());
@@ -127,14 +127,13 @@ public:
 
         void Reset() { }
 
-        void WaypointReached(uint32 uiPointId)
+        void WaypointReached(uint32 waypointId)
         {
             Player* player = GetPlayerForEscort();
-
             if (!player)
                 return;
 
-            switch (uiPointId)
+            switch (waypointId)
             {
                 case 16:
                     DoScriptText(SAY_GIL_AT_LAST, me, player);
@@ -186,10 +185,10 @@ class npc_sputtervalve : public CreatureScript
 public:
     npc_sputtervalve() : CreatureScript("npc_sputtervalve") { }
 
-    bool OnGossipSelect(Player* player, Creature* creature, uint32 /*uiSender*/, uint32 uiAction)
+    bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action)
     {
         player->PlayerTalkClass->ClearMenus();
-        if (uiAction == GOSSIP_ACTION_INFO_DEF)
+        if (action == GOSSIP_ACTION_INFO_DEF)
         {
             player->SEND_GOSSIP_MENU(2013, creature->GetGUID());
             player->AreaExploredOrEventHappens(6981);
@@ -234,9 +233,9 @@ public:
 
     struct npc_taskmaster_fizzuleAI : public ScriptedAI
     {
-        npc_taskmaster_fizzuleAI(Creature* c) : ScriptedAI(c)
+        npc_taskmaster_fizzuleAI(Creature* creature) : ScriptedAI(creature)
         {
-            factionNorm = c->getFaction();
+            factionNorm = creature->getFaction();
         }
 
         uint32 factionNorm;
@@ -350,7 +349,7 @@ public:
 
     struct npc_twiggy_flatheadAI : public ScriptedAI
     {
-        npc_twiggy_flatheadAI(Creature* c) : ScriptedAI(c) {}
+        npc_twiggy_flatheadAI(Creature* creature) : ScriptedAI(creature) {}
 
         bool EventInProgress;
         bool EventGrate;
@@ -385,7 +384,8 @@ public:
 
         void MoveInLineOfSight(Unit* who)
         {
-            if (!who || (!who->isAlive())) return;
+            if (!who || (!who->isAlive()))
+                return;
 
             if (me->IsWithinDistInMap(who, 10.0f) && (who->GetTypeId() == TYPEID_PLAYER) && CAST_PLR(who)->GetQuestStatus(1719) == QUEST_STATUS_INCOMPLETE && !EventInProgress)
             {
@@ -433,8 +433,10 @@ public:
                     if (BigWill)
                     {
                         Creature* creature = Unit::GetCreature((*me), BigWill);
-                        if (creature) {
-                            if (creature->isAlive()) {
+                        if (creature)
+                        {
+                            if (creature->isAlive())
+                            {
                                 creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IN_COMBAT);
                                 creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
                                 creature->setDeathState(JUST_DIED);
@@ -590,31 +592,26 @@ public:
             }
         }
 
-        void WaypointReached(uint32 uiPointId)
+        void WaypointReached(uint32 waypointId)
         {
-            Player* player = GetPlayerForEscort();
-
-            if (!player)
-                return;
-
-            switch (uiPointId)
+            switch (waypointId)
             {
-            case 0:
-                DoScriptText(SAY_STARTUP1, me);
-                break;
-            case 9:
-                SetRun(false);
-                break;
-            case 17:
-                if (Creature* temp = me->SummonCreature(NPC_MERCENARY, 1128.489f, -3037.611f, 92.701f, 1.472f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 120000))
-                {
-                    DoScriptText(SAY_MERCENARY, temp);
-                    me->SummonCreature(NPC_MERCENARY, 1160.172f, -2980.168f, 97.313f, 3.690f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 120000);
-                }
-                break;
-            case 24:
-                m_bIsPostEvent = true;
-                break;
+                case 0:
+                    DoScriptText(SAY_STARTUP1, me);
+                    break;
+                case 9:
+                    SetRun(false);
+                    break;
+                case 17:
+                    if (Creature* temp = me->SummonCreature(NPC_MERCENARY, 1128.489f, -3037.611f, 92.701f, 1.472f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 120000))
+                    {
+                        DoScriptText(SAY_MERCENARY, temp);
+                        me->SummonCreature(NPC_MERCENARY, 1160.172f, -2980.168f, 97.313f, 3.690f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 120000);
+                    }
+                    break;
+                case 24:
+                    m_bIsPostEvent = true;
+                    break;
             }
         }
 

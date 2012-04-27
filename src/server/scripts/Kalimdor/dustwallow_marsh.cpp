@@ -157,11 +157,11 @@ public:
         return true;
     }
 
-    bool OnGossipSelect(Player* player, Creature* creature, uint32 /*uiSender*/, uint32 uiAction)
+    bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action)
     {
         player->PlayerTalkClass->ClearMenus();
 
-        if (uiAction == GOSSIP_SENDER_INFO)
+        if (action == GOSSIP_SENDER_INFO)
         {
             player->CLOSE_GOSSIP_MENU();
             switch (urand(0, 1))
@@ -255,11 +255,11 @@ public:
         return true;
     }
 
-    bool OnGossipSelect(Player* player, Creature* creature, uint32 /*uiSender*/, uint32 uiAction)
+    bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action)
     {
         player->PlayerTalkClass->ClearMenus();
 
-        if (uiAction == GOSSIP_SENDER_INFO)
+        if (action == GOSSIP_SENDER_INFO)
         {
             player->CLOSE_GOSSIP_MENU();
             player->KilledMonsterCredit(NPC_THERAMORE_GUARD, 0);
@@ -337,10 +337,10 @@ class npc_lady_jaina_proudmoore : public CreatureScript
 public:
     npc_lady_jaina_proudmoore() : CreatureScript("npc_lady_jaina_proudmoore") { }
 
-    bool OnGossipSelect(Player* player, Creature* creature, uint32 /*uiSender*/, uint32 uiAction)
+    bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action)
     {
         player->PlayerTalkClass->ClearMenus();
-        if (uiAction == GOSSIP_SENDER_INFO)
+        if (action == GOSSIP_SENDER_INFO)
         {
             player->SEND_GOSSIP_MENU(7012, creature->GetGUID());
             player->CastSpell(player, SPELL_JAINAS_AUTOGRAPH, false);
@@ -377,10 +377,10 @@ class npc_nat_pagle : public CreatureScript
 public:
     npc_nat_pagle() : CreatureScript("npc_nat_pagle") { }
 
-    bool OnGossipSelect(Player* player, Creature* creature, uint32 /*uiSender*/, uint32 uiAction)
+    bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action)
     {
         player->PlayerTalkClass->ClearMenus();
-        if (uiAction == GOSSIP_ACTION_TRADE)
+        if (action == GOSSIP_ACTION_TRADE)
             player->GetSession()->SendListInventory(creature->GetGUID());
 
         return true;
@@ -607,49 +607,48 @@ public:
     {
        npc_stinkyAI(Creature* creature) : npc_escortAI(creature) { }
 
-        void WaypointReached(uint32 i)
+        void WaypointReached(uint32 waypointId)
         {
             Player* player = GetPlayerForEscort();
             if (!player)
                 return;
 
-            switch (i)
+            switch (waypointId)
             {
-            case 7:
-                DoScriptText(SAY_STAY_1, me, player);
-                break;
-            case 11:
-                DoScriptText(SAY_STAY_2, me, player);
-                break;
-            case 25:
-                DoScriptText(SAY_STAY_3, me, player);
-                break;
-            case 26:
-                DoScriptText(SAY_STAY_4, me, player);
-                break;
-            case 27:
-                DoScriptText(SAY_STAY_5, me, player);
-                break;
-            case 28:
-                DoScriptText(SAY_STAY_6, me, player);
-                me->SetStandState(UNIT_STAND_STATE_KNEEL);
-                break;
-            case 29:
-                me->SetStandState(UNIT_STAND_STATE_STAND);
-                break;
-            case 37:
-                DoScriptText(SAY_QUEST_COMPLETE, me, player);
-                me->SetSpeed(MOVE_RUN, 1.2f, true);
-                me->SetWalk(false);
-                if (player && player->GetQuestStatus(QUEST_STINKYS_ESCAPE_H))
-                    player->GroupEventHappens(QUEST_STINKYS_ESCAPE_H, me);
-                if (player && player->GetQuestStatus(QUEST_STINKYS_ESCAPE_A))
-                    player->GroupEventHappens(QUEST_STINKYS_ESCAPE_A, me);
-                break;
-            case 39:
-                DoScriptText(EMOTE_DISAPPEAR, me);
-                break;
-
+                case 7:
+                    DoScriptText(SAY_STAY_1, me, player);
+                    break;
+                case 11:
+                    DoScriptText(SAY_STAY_2, me, player);
+                    break;
+                case 25:
+                    DoScriptText(SAY_STAY_3, me, player);
+                    break;
+                case 26:
+                    DoScriptText(SAY_STAY_4, me, player);
+                    break;
+                case 27:
+                    DoScriptText(SAY_STAY_5, me, player);
+                    break;
+                case 28:
+                    DoScriptText(SAY_STAY_6, me, player);
+                    me->SetStandState(UNIT_STAND_STATE_KNEEL);
+                    break;
+                case 29:
+                    me->SetStandState(UNIT_STAND_STATE_STAND);
+                    break;
+                case 37:
+                    DoScriptText(SAY_QUEST_COMPLETE, me, player);
+                    me->SetSpeed(MOVE_RUN, 1.2f, true);
+                    me->SetWalk(false);
+                    if (player->GetQuestStatus(QUEST_STINKYS_ESCAPE_H))
+                        player->GroupEventHappens(QUEST_STINKYS_ESCAPE_H, me);
+                    if (player->GetQuestStatus(QUEST_STINKYS_ESCAPE_A))
+                        player->GroupEventHappens(QUEST_STINKYS_ESCAPE_A, me);
+                    break;
+                case 39:
+                    DoScriptText(EMOTE_DISAPPEAR, me);
+                    break;
             }
         }
 
@@ -663,10 +662,11 @@ public:
         void JustDied(Unit* /*killer*/)
         {
             Player* player = GetPlayerForEscort();
-            if (HasEscortState(STATE_ESCORT_ESCORTING) && player)
+            if (player && HasEscortState(STATE_ESCORT_ESCORTING))
             {
                 if (player->GetQuestStatus(QUEST_STINKYS_ESCAPE_H))
                     player->FailQuest(QUEST_STINKYS_ESCAPE_H);
+
                 if (player->GetQuestStatus(QUEST_STINKYS_ESCAPE_A))
                     player->FailQuest(QUEST_STINKYS_ESCAPE_A);
             }
@@ -847,7 +847,7 @@ public:
                 player->KilledMonsterCredit(NPC_THERAMORE_PRISONER, 0);
 
             prisoner->AI()->Talk(SAY_FREE); // We also emote cry here (handled in creature_text.emote)
-            prisoner->ForcedDespawn(6000);
+            prisoner->DespawnOrUnsummon(6000);
         }
         return true;
     }

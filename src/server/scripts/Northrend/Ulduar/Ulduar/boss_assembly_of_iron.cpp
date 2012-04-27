@@ -251,7 +251,7 @@ class boss_steelbreaker : public CreatureScript
                 }
             }
 
-            void JustDied(Unit* /*who*/)
+            void JustDied(Unit* /*killer*/)
             {
                 DoScriptText(RAND(SAY_STEELBREAKER_DEATH_1, SAY_STEELBREAKER_DEATH_2), me);
                 if (IsEncounterComplete(instance, me))
@@ -375,7 +375,7 @@ class boss_runemaster_molgeim : public CreatureScript
                 }
             }
 
-            void JustDied(Unit* /*who*/)
+            void JustDied(Unit* /*killer*/)
             {
                 DoScriptText(RAND(SAY_MOLGEIM_DEATH_1, SAY_MOLGEIM_DEATH_2), me);
                 if (IsEncounterComplete(instance, me))
@@ -575,7 +575,7 @@ class boss_stormcaller_brundir : public CreatureScript
                 _Reset();
                 phase = 0;
                 me->RemoveAllAuras();
-                me->SetLevitate(false);
+                me->SetDisableGravity(false);
                 me->ApplySpellImmune(0, IMMUNITY_MECHANIC, MECHANIC_INTERRUPT, false);  // Should be interruptable unless overridden by spell (Overload)
                 me->ApplySpellImmune(0, IMMUNITY_MECHANIC, MECHANIC_STUN, false);   // Reset immumity, Brundir should be stunnable by default
                 RespawnEncounter(instance, me);
@@ -616,7 +616,7 @@ class boss_stormcaller_brundir : public CreatureScript
                 }
             }
 
-            void JustDied(Unit* /*who*/)
+            void JustDied(Unit* /*killer*/)
             {
                 DoScriptText(RAND(SAY_BRUNDIR_DEATH_1, SAY_BRUNDIR_DEATH_2), me);
                 if (IsEncounterComplete(instance, me))

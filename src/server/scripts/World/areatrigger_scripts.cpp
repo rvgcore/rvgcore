@@ -252,8 +252,13 @@ class AreaTrigger_at_sholazar_waygate : public AreaTriggerScript
             {
                 switch (trigger->id)
                 {
-                    case AT_SHOLAZAR: player->CastSpell(player, SPELL_SHOLAZAR_TO_UNGORO_TELEPORT, false); break;
-                    case AT_UNGORO:   player->CastSpell(player, SPELL_UNGORO_TO_SHOLAZAR_TELEPORT, false); break;
+                    case AT_SHOLAZAR:
+                        player->CastSpell(player, SPELL_SHOLAZAR_TO_UNGORO_TELEPORT, false);
+                        break;
+
+                    case AT_UNGORO:
+                        player->CastSpell(player, SPELL_UNGORO_TO_SHOLAZAR_TELEPORT, false);
+                        break;
                 }
             }
 
@@ -447,7 +452,7 @@ class AreaTrigger_at_area_52_entrance : public AreaTriggerScript
 
         bool OnTrigger(Player* player, AreaTriggerEntry const* trigger)
         {
-            float x, y, z;
+            float x = 0.0f, y = 0.0f, z = 0.0f;
 
             if (!player->isAlive())
                 return false;

@@ -340,7 +340,10 @@ void Object::_BuildMovementUpdate(ByteBuffer* data, uint16 flags) const
 
             *data << ((WorldObject*)this)->GetPositionX();
             *data << ((WorldObject*)this)->GetPositionY();
-            *data << ((WorldObject*)this)->GetPositionZ();
+            if (isType(TYPEMASK_UNIT))
+                *data << ((Unit*)this)->GetPositionZMinusOffset();
+            else
+                *data << ((WorldObject*)this)->GetPositionZ();
 
             if (transport)
             {
@@ -352,7 +355,10 @@ void Object::_BuildMovementUpdate(ByteBuffer* data, uint16 flags) const
             {
                 *data << ((WorldObject*)this)->GetPositionX();
                 *data << ((WorldObject*)this)->GetPositionY();
-                *data << ((WorldObject*)this)->GetPositionZ();
+                if (isType(TYPEMASK_UNIT))
+                    *data << ((Unit*)this)->GetPositionZMinusOffset();
+                else
+                    *data << ((WorldObject*)this)->GetPositionZ();
             }
 
             *data << ((WorldObject*)this)->GetOrientation();
@@ -369,7 +375,10 @@ void Object::_BuildMovementUpdate(ByteBuffer* data, uint16 flags) const
             {
                 *data << ((WorldObject*)this)->GetPositionX();
                 *data << ((WorldObject*)this)->GetPositionY();
-                *data << ((WorldObject*)this)->GetPositionZ();
+                if (isType(TYPEMASK_UNIT))
+                    *data << ((Unit*)this)->GetPositionZMinusOffset();
+                else
+                    *data << ((WorldObject*)this)->GetPositionZ();
                 *data << ((WorldObject*)this)->GetOrientation();
             }
         }
@@ -477,6 +486,10 @@ void Object::_BuildValuesUpdate(uint8 updatetype, ByteBuffer * data, UpdateMask*
             }
             updateMask->SetBit(GAMEOBJECT_DYNAMIC);
             updateMask->SetBit(GAMEOBJECT_BYTES_1);
+
+            if (ToGameObject()->GetGoType() == GAMEOBJECT_TYPE_CHEST && ToGameObject()->GetGOInfo()->chest.groupLootRules &&
+                ToGameObject()->HasLootRecipient())
+                updateMask->SetBit(GAMEOBJECT_FLAGS);
         }
         else if (isType(TYPEMASK_UNIT))
         {
@@ -614,6 +627,11 @@ void Object::_BuildValuesUpdate(uint8 updatetype, ByteBuffer * data, UpdateMask*
                             dynamicFlags &= ~UNIT_DYNFLAG_LOOTABLE;
                     }
 
+                    // unit UNIT_DYNFLAG_TRACK_UNIT should only be sent to caster of SPELL_AURA_MOD_STALKED auras
+                    if (Unit const* unit = ToUnit())
+                        if (dynamicFlags & UNIT_DYNFLAG_TRACK_UNIT)
+                            if (!unit->HasAuraTypeWithCaster(SPELL_AURA_MOD_STALKED, target->GetGUID()))
+                                dynamicFlags &= ~UNIT_DYNFLAG_TRACK_UNIT;
                     *data << dynamicFlags;
                 }
                 // FG: pretend that OTHER players in own group are friendly ("blue")
@@ -699,6 +717,15 @@ void Object::_BuildValuesUpdate(uint8 updatetype, ByteBuffer * data, UpdateMask*
                         *data << uint16(0);
                         *data << uint16(-1);
                     }
+                }
+                else if (index == GAMEOBJECT_FLAGS)
+                {
+                    uint32 flags = m_uint32Values[index];
+                    if (ToGameObject()->GetGoType() == GAMEOBJECT_TYPE_CHEST)
+                        if (ToGameObject()->GetGOInfo()->chest.groupLootRules && !ToGameObject()->IsLootAllowedFor(target))
+                            flags |= GO_FLAG_LOCKED | GO_FLAG_NOT_SELECTABLE;
+
+                    *data << flags;
                 }
                 else
                     *data << m_uint32Values[index];                // other cases
@@ -1164,7 +1191,7 @@ void MovementInfo::OutDebug()
         sLog->outString("pitch: %f", pitch);
 
     sLog->outString("fallTime: %u", fallTime);
-    if (flags & MOVEMENTFLAG_JUMPING)
+    if (flags & MOVEMENTFLAG_FALLING)
         sLog->outString("j_zspeed: %f j_sinAngle: %f j_cosAngle: %f j_xyspeed: %f", j_zspeed, j_sinAngle, j_cosAngle, j_xyspeed);
 
     if (flags & MOVEMENTFLAG_SPLINE_ELEVATION)
@@ -1435,7 +1462,9 @@ void Position::GetPositionOffsetTo(const Position & endPos, Position & retOffset
 
 float Position::GetAngle(const Position* obj) const
 {
-    if (!obj) return 0;
+    if (!obj)
+        return 0;
+
     return GetAngle(obj->GetPositionX(), obj->GetPositionY());
 }
 
@@ -1486,7 +1515,7 @@ bool Position::HasInArc(float arc, const Position* obj) const
     if (angle > M_PI)
         angle -= 2.0f*M_PI;
 
-    float lborder =  -1 * (arc/2.0f);                       // in range -pi..0
+    float lborder = -1 * (arc/2.0f);                        // in range -pi..0
     float rborder = (arc/2.0f);                             // in range 0..pi
     return ((angle >= lborder) && (angle <= rborder));
 }
@@ -1557,7 +1586,7 @@ void WorldObject::UpdateAllowedPositionZ(float x, float y, float &z) const
         {
             // non fly unit don't must be in air
             // non swim unit must be at ground (mostly speedup, because it don't must be in water and water level check less fast
-            if (!ToCreature()->canFly())
+            if (!ToCreature()->CanFly())
             {
                 bool canSwim = ToCreature()->canSwim();
                 float ground_z = z;
@@ -1583,7 +1612,7 @@ void WorldObject::UpdateAllowedPositionZ(float x, float y, float &z) const
         case TYPEID_PLAYER:
         {
             // for server controlled moves playr work same as creature (but it can always swim)
-            if (!ToPlayer()->canFly())
+            if (!ToPlayer()->CanFly())
             {
                 float ground_z = z;
                 float max_z = GetBaseMap()->GetWaterOrGroundLevel(x, y, z, &ground_z, !ToUnit()->HasAuraType(SPELL_AURA_WATER_WALK));
@@ -1606,7 +1635,7 @@ void WorldObject::UpdateAllowedPositionZ(float x, float y, float &z) const
         default:
         {
             float ground_z = GetBaseMap()->GetHeight(GetPhaseMask(), x, y, z, true);
-            if(ground_z > INVALID_HEIGHT)
+            if (ground_z > INVALID_HEIGHT)
                 z = ground_z;
             break;
         }
@@ -2668,8 +2697,42 @@ void WorldObject::GetNearPoint(WorldObject const* /*searcher*/, float &x, float 
 void WorldObject::MovePosition(Position &pos, float dist, float angle)
 {
     angle += m_orientation;
-    pos.m_positionX += dist * cos(angle);
-    pos.m_positionY += dist * sin(angle);
+    float destx, desty, destz, ground, floor;
+    destx = pos.m_positionX + dist * cos(angle);
+    desty = pos.m_positionY + dist * sin(angle);
+
+    // Prevent invalid coordinates here, position is unchanged
+    if (!Trinity::IsValidMapCoord(destx, desty))
+    {
+        sLog->outCrash("WorldObject::MovePosition invalid coordinates X: %f and Y: %f were passed!", destx, desty);
+        return;
+    }
+
+    ground = GetMap()->GetHeight(GetPhaseMask(), destx, desty, MAX_HEIGHT, true);
+    floor = GetMap()->GetHeight(GetPhaseMask(), destx, desty, pos.m_positionZ, true);
+    destz = fabs(ground - pos.m_positionZ) <= fabs(floor - pos.m_positionZ) ? ground : floor;
+
+    float step = dist/10.0f;
+
+    for (uint8 j = 0; j < 10; ++j)
+    {
+        // do not allow too big z changes
+        if (fabs(pos.m_positionZ - destz) > 6)
+        {
+            destx -= step * cos(angle);
+            desty -= step * sin(angle);
+            ground = GetMap()->GetHeight(GetPhaseMask(), destx, desty, MAX_HEIGHT, true);
+            floor = GetMap()->GetHeight(GetPhaseMask(), destx, desty, pos.m_positionZ, true);
+            destz = fabs(ground - pos.m_positionZ) <= fabs(floor - pos.m_positionZ) ? ground : floor;
+        }
+        // we have correct destz now
+        else
+        {
+            pos.Relocate(destx, desty, destz);
+            break;
+        }
+    }
+
     Trinity::NormalizeMapCoord(pos.m_positionX);
     Trinity::NormalizeMapCoord(pos.m_positionY);
     UpdateGroundPositionZ(pos.m_positionX, pos.m_positionY, pos.m_positionZ);
@@ -2683,6 +2746,14 @@ void WorldObject::MovePositionToFirstCollision(Position &pos, float dist, float 
     pos.m_positionZ += 2.0f;
     destx = pos.m_positionX + dist * cos(angle);
     desty = pos.m_positionY + dist * sin(angle);
+
+    // Prevent invalid coordinates here, position is unchanged
+    if (!Trinity::IsValidMapCoord(destx, desty))
+    {
+        sLog->outCrash("WorldObject::MovePositionToFirstCollision invalid coordinates X: %f and Y: %f were passed!", destx, desty);
+        return;
+    }
+
     ground = GetMap()->GetHeight(GetPhaseMask(), destx, desty, MAX_HEIGHT, true);
     floor = GetMap()->GetHeight(GetPhaseMask(), destx, desty, pos.m_positionZ, true);
     destz = fabs(ground - pos.m_positionZ) <= fabs(floor - pos.m_positionZ) ? ground : floor;

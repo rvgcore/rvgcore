@@ -46,16 +46,16 @@ class npc_braug_dimspirit : public CreatureScript
 public:
     npc_braug_dimspirit() : CreatureScript("npc_braug_dimspirit") { }
 
-    bool OnGossipSelect(Player* player, Creature* creature, uint32 /*uiSender*/, uint32 uiAction)
+    bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action)
     {
         player->PlayerTalkClass->ClearMenus();
-        if (uiAction == GOSSIP_ACTION_INFO_DEF+1)
+        if (action == GOSSIP_ACTION_INFO_DEF+1)
         {
             player->CLOSE_GOSSIP_MENU();
             creature->CastSpell(player, 6766, false);
 
         }
-        if (uiAction == GOSSIP_ACTION_INFO_DEF+2)
+        if (action == GOSSIP_ACTION_INFO_DEF+2)
         {
             player->CLOSE_GOSSIP_MENU();
             player->AreaExploredOrEventHappens(6627);
@@ -112,28 +112,27 @@ public:
 
     struct npc_kaya_flathoofAI : public npc_escortAI
     {
-        npc_kaya_flathoofAI(Creature* c) : npc_escortAI(c) {}
+        npc_kaya_flathoofAI(Creature* creature) : npc_escortAI(creature) {}
 
-        void WaypointReached(uint32 i)
+        void WaypointReached(uint32 waypointId)
         {
             Player* player = GetPlayerForEscort();
-
             if (!player)
                 return;
 
-            switch (i)
+            switch (waypointId)
             {
-            case 16:
-                DoScriptText(SAY_AMBUSH, me);
-                me->SummonCreature(NPC_GRIMTOTEM_BRUTE, -48.53f, -503.34f, -46.31f, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 30000);
-                me->SummonCreature(NPC_GRIMTOTEM_RUFFIAN, -38.85f, -503.77f, -45.90f, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 30000);
-                me->SummonCreature(NPC_GRIMTOTEM_SORCERER, -36.37f, -496.23f, -45.71f, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 30000);
-                break;
-            case 18: me->SetInFront(player);
-                DoScriptText(SAY_END, me, player);
-                if (player)
+                case 16:
+                    DoScriptText(SAY_AMBUSH, me);
+                    me->SummonCreature(NPC_GRIMTOTEM_BRUTE, -48.53f, -503.34f, -46.31f, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 30000);
+                    me->SummonCreature(NPC_GRIMTOTEM_RUFFIAN, -38.85f, -503.77f, -45.90f, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 30000);
+                    me->SummonCreature(NPC_GRIMTOTEM_SORCERER, -36.37f, -496.23f, -45.71f, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 30000);
+                    break;
+                case 18:
+                    me->SetInFront(player);
+                    DoScriptText(SAY_END, me, player);
                     player->GroupEventHappens(QUEST_PROTECT_KAYA, me);
-                break;
+                    break;
             }
         }
 

@@ -68,12 +68,14 @@ SmartAI::SmartAI(Creature* c) : CreatureAI(c)
     mFollowCredit = 0;
     mFollowArrivedEntry = 0;
     mFollowCreditType = 0;
-    mInvinceabilityHpLevel = 0;
+    mInvincibilityHpLevel = 0;
 }
 
 void SmartAI::UpdateDespawn(const uint32 diff)
 {
-    if (mDespawnState <= 1 || mDespawnState > 3) return;
+    if (mDespawnState <= 1 || mDespawnState > 3)
+        return;
+
     if (mDespawnTime < diff)
     {
         if (mDespawnState == 2)
@@ -638,8 +640,8 @@ void SmartAI::SpellHitTarget(Unit* target, const SpellInfo* spellInfo)
 void SmartAI::DamageTaken(Unit* doneBy, uint32& damage)
 {
     GetScript()->ProcessEventsFor(SMART_EVENT_DAMAGED, doneBy, damage);
-    if ((me->GetHealth() - damage) <= mInvinceabilityHpLevel)
-        damage -= mInvinceabilityHpLevel;
+    if ((me->GetHealth() - damage) <= mInvincibilityHpLevel)
+        damage = me->GetHealth() - mInvincibilityHpLevel;
 }
 
 void SmartAI::HealReceived(Unit* doneBy, uint32& addhealth)
@@ -729,17 +731,7 @@ void SmartAI::SetRun(bool run)
 
 void SmartAI::SetFly(bool fly)
 {
-    if (fly)
-    {
-        me->SetLevitate(true);
-        me->SetByteFlag(UNIT_FIELD_BYTES_1, 3, 0x01);
-    }
-    else
-    {
-        me->SetLevitate(false);
-        me->RemoveByteFlag(UNIT_FIELD_BYTES_1, 3, 0x01);
-    }
-    me->SetFlying(fly);
+    me->SetDisableGravity(fly);
     me->SendMovementFlagUpdate();
 }
 
@@ -862,7 +854,7 @@ int SmartGameObjectAI::Permissible(const GameObject* g)
     return PERMIT_BASE_NO;
 }
 
-void SmartGameObjectAI::UpdateAI(const uint32 diff)
+void SmartGameObjectAI::UpdateAI(uint32 diff)
 {
     GetScript()->OnUpdate(diff);
 }

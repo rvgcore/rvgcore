@@ -527,6 +527,7 @@ struct AreaTableEntry
     char*   area_name[16];                                  // 11-26
                                                             // 27, string flags, unused
     uint32  team;                                           // 28
+    uint32  LiquidTypeOverride[4];                          // 29-32 liquid override by type
 
     // helpers
     bool IsSanctuary() const
@@ -1214,30 +1215,29 @@ struct LFGDungeonEntry
     uint32 Entry() const { return ID + (type << 24); }
 };
 
-/*
+
 struct LiquidTypeEntry
 {
-    uint32      ID;                                         // 0
-    char*       name;                                       // 1
-    uint32      flags;                                      // 2        Water: 1|2|4|8, Magma: 8|16|32|64, Slime: 2|64|256, WMO Ocean: 1|2|4|8|512
-    uint32      type;                                       // 3        0: Water, 1: Ocean, 2: Magma, 3: Slime
-    uint32      soundid;                                    // 4        Reference to SoundEntries.dbc
-    uint32      spellID;                                    // 5        Reference to Spell.dbc
-    float       maxDarkenDepth                              // 6        Only Slime (6) and Magma (7)
-    float       fogDarkenIntensity                          // 7        Only oceans got values here!
-    float       ambDarkenIntensity                          // 8        Only oceans got values here!
-    float       dirDarkenIntensity                          // 9        Only oceans got values here!
-    uint32      lightID                                     // 10       Only Slime (6) and Magma (7)
-    float       particleScale                               // 11       0: Slime, 1: Water/Ocean, 4: Magma
-    uint32      particleMovement                            // 12
-    uint32      particleTexSlots                            // 13
-    uint32      LiquidMaterialID                            // 14       Reference to LiquidMaterial.dbc
-    char*       texture[6];                                 // 15-20
-    uint32      color[2]                                    // 21-22
-    float       floats[18];                                 // 23-40    Most likely these are attributes for the shaders. Water: (23, TextureTilesPerBlock),(24, Rotation) Magma: (23, AnimationX),(24, AnimationY)
-    uint32      ints[4]                                     // 41-44
+    uint32 Id;
+    //char*  Name;
+    //uint32 Flags;
+    uint32 Type;
+    //uint32 SoundId;
+    uint32 SpellId;
+    //float MaxDarkenDepth;
+    //float FogDarkenIntensity;
+    //float AmbDarkenIntensity;
+    //float DirDarkenIntensity;
+    //uint32 LightID;
+    //float ParticleScale;
+    //uint32 ParticleMovement;
+    //uint32 ParticleTexSlots;
+    //uint32 LiquidMaterialID;
+    //char* Texture[6];
+    //uint32 Color[2];
+    //float Unk1[18];
+    //uint32 Unk2[4];
 };
-*/
 
 #define MAX_LOCK_CASE 8
 
@@ -1292,6 +1292,7 @@ struct MapEntry
     bool IsBattleground() const { return map_type == MAP_BATTLEGROUND; }
     bool IsBattleArena() const { return map_type == MAP_ARENA; }
     bool IsBattlegroundOrArena() const { return map_type == MAP_BATTLEGROUND || map_type == MAP_ARENA; }
+    bool IsWorldMap() const { return map_type == MAP_COMMON; }
 
     bool GetEntrancePos(int32 &mapid, float &x, float &y) const
     {
@@ -1393,60 +1394,63 @@ struct ScalingStatValuesEntry
     uint32  ssdMultiplier[4];                               // 2-5 Multiplier for ScalingStatDistribution
     uint32  armorMod[4];                                    // 6-9 Armor for level
     uint32  dpsMod[6];                                      // 10-15 DPS mod for level
-    uint32  spellBonus;                                     // 16 spell power for level
+    uint32  spellPower;                                     // 16 spell power for level
     uint32  ssdMultiplier2;                                 // 17 there's data from 3.1 dbc ssdMultiplier[3]
     uint32  ssdMultiplier3;                                 // 18 3.3
-    //uint32 unk2;                                          // 19 unk, probably also Armor for level (flag 0x80000?)
-    uint32  armorMod2[4];                                   // 20-23 Armor for level
+    uint32  armorMod2[5];                                   // 19-23 Armor for level
 
-    uint32  getssdMultiplier(uint32 mask) const
+    uint32 getssdMultiplier(uint32 mask) const
     {
         if (mask & 0x4001F)
         {
-            if (mask & 0x00000001) return ssdMultiplier[0];
-            if (mask & 0x00000002) return ssdMultiplier[1];
-            if (mask & 0x00000004) return ssdMultiplier[2];
+            if (mask & 0x00000001) return ssdMultiplier[0]; // Shoulder
+            if (mask & 0x00000002) return ssdMultiplier[1]; // Trinket
+            if (mask & 0x00000004) return ssdMultiplier[2]; // Weapon1H
             if (mask & 0x00000008) return ssdMultiplier2;
-            if (mask & 0x00000010) return ssdMultiplier[3];
+            if (mask & 0x00000010) return ssdMultiplier[3]; // Ranged
             if (mask & 0x00040000) return ssdMultiplier3;
         }
         return 0;
     }
 
-    uint32  getArmorMod(uint32 mask) const
+    uint32 getArmorMod(uint32 mask) const
     {
         if (mask & 0x00F001E0)
         {
-            if (mask & 0x00000020) return armorMod[0];
-            if (mask & 0x00000040) return armorMod[1];
-            if (mask & 0x00000080) return armorMod[2];
-            if (mask & 0x00000100) return armorMod[3];
+            if (mask & 0x00000020) return armorMod[0];      // Cloth shoulder
+            if (mask & 0x00000040) return armorMod[1];      // Leather shoulder
+            if (mask & 0x00000080) return armorMod[2];      // Mail shoulder
+            if (mask & 0x00000100) return armorMod[3];      // Plate shoulder
 
-            if (mask & 0x00100000) return armorMod2[0];      // cloth
-            if (mask & 0x00200000) return armorMod2[1];      // leather
-            if (mask & 0x00400000) return armorMod2[2];      // mail
-            if (mask & 0x00800000) return armorMod2[3];      // plate
+            if (mask & 0x00080000) return armorMod2[0];      // cloak
+            if (mask & 0x00100000) return armorMod2[1];      // cloth
+            if (mask & 0x00200000) return armorMod2[2];      // leather
+            if (mask & 0x00400000) return armorMod2[3];      // mail
+            if (mask & 0x00800000) return armorMod2[4];      // plate
         }
         return 0;
     }
+
     uint32 getDPSMod(uint32 mask) const
     {
-        if (mask&0x7E00)
+        if (mask & 0x7E00)
         {
-            if (mask & 0x00000200) return dpsMod[0];
-            if (mask & 0x00000400) return dpsMod[1];
-            if (mask & 0x00000800) return dpsMod[2];
-            if (mask & 0x00001000) return dpsMod[3];
-            if (mask & 0x00002000) return dpsMod[4];
-            if (mask & 0x00004000) return dpsMod[5];         // not used?
+            if (mask & 0x00000200) return dpsMod[0];        // Weapon 1h
+            if (mask & 0x00000400) return dpsMod[1];        // Weapon 2h
+            if (mask & 0x00000800) return dpsMod[2];        // Caster dps 1h
+            if (mask & 0x00001000) return dpsMod[3];        // Caster dps 2h
+            if (mask & 0x00002000) return dpsMod[4];        // Ranged
+            if (mask & 0x00004000) return dpsMod[5];        // Wand
         }
         return 0;
     }
+
     uint32 getSpellBonus(uint32 mask) const
     {
-        if (mask & 0x00008000) return spellBonus;
+        if (mask & 0x00008000) return spellPower;
         return 0;
     }
+
     uint32 getFeralBonus(uint32 mask) const                 // removed in 3.2.x?
     {
         if (mask & 0x00010000) return 0;                    // not used?
@@ -1982,7 +1986,7 @@ struct WorldMapAreaEntry
     float   x2;                                             // 7
     int32   virtual_map_id;                                 // 8 -1 (map_id have correct map) other: virtual map where zone show (map_id - where zone in fact internally)
     // int32   dungeonMap_id;                               // 9 pointer to DungeonMap.dbc (owerride x1, x2, y1, y2 coordinates)
-    // uint32  someMapID;                                   // 10
+    // uint32  parentMapID;                                 // 10
 };
 
 #define MAX_WORLD_MAP_OVERLAY_AREA_IDX 4

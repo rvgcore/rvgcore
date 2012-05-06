@@ -48,7 +48,7 @@ enum ConditionTypes
     CONDITION_CLASS                 = 15,                   // class            0              0                  true if player's class is equal to class
     CONDITION_RACE                  = 16,                   // race             0              0                  true if player's race is equal to race
     CONDITION_ACHIEVEMENT           = 17,                   // achievement_id   0              0                  true if achievement is complete
-    CONDITION_UNUSED_18             = 18,                   //
+    CONDITION_TITLE                 = 18,                   // title id         0              0                  true if player has title
     CONDITION_UNUSED_19             = 19,                   //
     CONDITION_UNUSED_20             = 20,                   //
     CONDITION_UNUSED_21             = 21,                   //
@@ -89,10 +89,10 @@ enum ConditionTypes
     The following steps only apply if your condition can be grouped:
 
     Step 6: Determine how you are going to store your conditions. You need to add a new storage container
-            for it in ConditionMgr class, along with a function like: 
+            for it in ConditionMgr class, along with a function like:
             ConditionList GetConditionsForXXXYourNewSourceTypeXXX(parameters...)
 
-            The above function should be placed in upper level (practical) code that actually 
+            The above function should be placed in upper level (practical) code that actually
             checks the conditions.
 
     Step 7: Implement loading for your source type in ConditionMgr::LoadConditions.

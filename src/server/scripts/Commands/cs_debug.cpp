@@ -46,7 +46,7 @@ public:
             { "cinematic",      SEC_MODERATOR,      false, &HandleDebugPlayCinematicCommand,   "", NULL },
             { "movie",          SEC_MODERATOR,      false, &HandleDebugPlayMovieCommand,       "", NULL },
             { "sound",          SEC_MODERATOR,      false, &HandleDebugPlaySoundCommand,       "", NULL },
-            { NULL,             0,                  false, NULL,                               "", NULL }
+            { NULL,             SEC_PLAYER,     false, NULL,                               "", NULL }
         };
         static ChatCommand debugSendCommandTable[] =
         {
@@ -61,7 +61,7 @@ public:
             { "sellerror",      SEC_ADMINISTRATOR,  false, &HandleDebugSendSellErrorCommand,      "", NULL },
             { "setphaseshift",  SEC_ADMINISTRATOR,  false, &HandleDebugSendSetPhaseShiftCommand,  "", NULL },
             { "spellfail",      SEC_ADMINISTRATOR,  false, &HandleDebugSendSpellFailCommand,      "", NULL },
-            { NULL,             0,                  false, NULL,                                  "", NULL }
+            { NULL,             SEC_PLAYER,         false, NULL,                                  "", NULL }
         };
         static ChatCommand debugCommandTable[] =
         {
@@ -90,12 +90,13 @@ public:
             { "areatriggers",   SEC_ADMINISTRATOR,  false, &HandleDebugAreaTriggersCommand,    "", NULL },
             { "los",            SEC_MODERATOR,      false, &HandleDebugLoSCommand,             "", NULL },
             { "moveflags",      SEC_ADMINISTRATOR,  false, &HandleDebugMoveflagsCommand,       "", NULL },
-            { NULL,             0,                  false, NULL,                               "", NULL }
+            { NULL,             SEC_PLAYER,         false, NULL,                               "", NULL }
         };
         static ChatCommand commandTable[] =
         {
             { "debug",          SEC_MODERATOR,      true,  NULL,                  "", debugCommandTable },
-            { NULL,             0,                  false, NULL,                               "", NULL }
+            { "wpgps",          SEC_ADMINISTRATOR,  false, &HandleWPGPSCommand,                "", NULL },
+            { NULL,             SEC_PLAYER,         false, NULL,                  "",              NULL }
         };
         return commandTable;
     }
@@ -1198,7 +1199,7 @@ public:
         int currentValue = (int)handler->GetSession()->GetPlayer()->GetUInt32Value(opcode);
 
         currentValue += value;
-        handler->GetSession()->GetPlayer()->SetUInt32Value(opcode , (uint32)currentValue);
+        handler->GetSession()->GetPlayer()->SetUInt32Value(opcode, (uint32)currentValue);
 
         handler->PSendSysMessage(LANG_CHANGE_32BIT_FIELD, opcode, currentValue);
 
@@ -1303,10 +1304,10 @@ public:
                 return false;
 
             char* mask2 = strtok(NULL, " \n");
-            
+
             uint32 moveFlags = (uint32)atoi(mask1);
             target->SetUnitMovementFlags(moveFlags);
-            
+
             if (mask2)
             {
                 uint32 moveFlagsExtra = uint32(atoi(mask2));
@@ -1316,7 +1317,17 @@ public:
             target->SendMovementFlagUpdate();
             handler->PSendSysMessage(LANG_MOVEFLAGS_SET, target->GetUnitMovementFlags(), target->GetExtraUnitMovementFlags());
         }
-        
+
+        return true;
+    }
+
+    static bool HandleWPGPSCommand(ChatHandler* handler, char const* /*args*/)
+    {
+        Player* player = handler->GetSession()->GetPlayer();
+
+        sLog->outSQLDev("(@PATH, XX, %.3f, %.3f, %.5f, 0,0, 0,100, 0),", player->GetPositionX(), player->GetPositionY(), player->GetPositionZ());
+
+        handler->PSendSysMessage("Waypoint SQL written to SQL Developer log");
         return true;
     }
 };

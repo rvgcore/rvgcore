@@ -5,9 +5,13 @@
  * This program is free software licensed under GPL version 2
  * Please see the included DOCS/LICENSE.TXT for more information */
 
-#include "ScriptPCH.h"
+#include "ScriptedCreature.h"
 #include "Item.h"
 #include "Spell.h"
+#include "GridNotifiers.h"
+#include "GridNotifiersImpl.h"
+#include "Cell.h"
+#include "CellImpl.h"
 #include "ObjectMgr.h"
 #include "TemporarySummon.h"
 
@@ -73,17 +77,13 @@ void SummonList::RemoveNotExisting()
     }
 }
 
-bool SummonList::HasEntry(uint32 entry)
+bool SummonList::HasEntry(uint32 entry) const
 {
-    for (iterator i = begin(); i != end();)
+    for (const_iterator i = begin(); i != end(); ++i)
     {
         Creature* summon = Unit::GetCreature(*me, *i);
-        if (!summon)
-            erase(i++);
-        else if (summon->GetEntry() == entry)
+        if (summon && summon->GetEntry() == entry)
             return true;
-        else
-            ++i;
     }
 
     return false;
@@ -153,7 +153,7 @@ void ScriptedAI::DoPlaySoundToSet(WorldObject* source, uint32 soundId)
 
     if (!sSoundEntriesStore.LookupEntry(soundId))
     {
-        sLog->outError("TSCR: Invalid soundId %u used in DoPlaySoundToSet (Source: TypeId %u, GUID %u)", soundId, source->GetTypeId(), source->GetGUIDLow());
+        sLog->outError(LOG_FILTER_TSCR, "Invalid soundId %u used in DoPlaySoundToSet (Source: TypeId %u, GUID %u)", soundId, source->GetTypeId(), source->GetGUIDLow());
         return;
     }
 
@@ -246,16 +246,15 @@ void ScriptedAI::DoResetThreat()
 {
     if (!me->CanHaveThreatList() || me->getThreatManager().isThreatListEmpty())
     {
-        sLog->outError("TSCR: DoResetThreat called for creature that either cannot have threat list or has empty threat list (me entry = %d)", me->GetEntry());
+        sLog->outError(LOG_FILTER_TSCR, "DoResetThreat called for creature that either cannot have threat list or has empty threat list (me entry = %d)", me->GetEntry());
         return;
     }
 
-    std::list<HostileReference*>& threatlist = me->getThreatManager().getThreatList();
+    ThreatContainer::StorageType threatlist = me->getThreatManager().getThreatList();
 
-    for (std::list<HostileReference*>::iterator itr = threatlist.begin(); itr != threatlist.end(); ++itr)
+    for (ThreatContainer::StorageType::const_iterator itr = threatlist.begin(); itr != threatlist.end(); ++itr)
     {
         Unit* unit = Unit::GetUnit(*me, (*itr)->getUnitGuid());
-
         if (unit && DoGetThreat(unit))
             DoModifyThreatPercent(unit, -100);
     }
@@ -295,7 +294,8 @@ void ScriptedAI::DoTeleportPlayer(Unit* unit, float x, float y, float z, float o
     if (Player* player = unit->ToPlayer())
         player->TeleportTo(unit->GetMapId(), x, y, z, o, TELE_TO_NOT_LEAVE_COMBAT);
     else
-        sLog->outError("TSCR: Creature " UI64FMTD " (Entry: %u) Tried to teleport non-player unit (Type: %u GUID: " UI64FMTD ") to x: %f y:%f z: %f o: %f. Aborted.", me->GetGUID(), me->GetEntry(), unit->GetTypeId(), unit->GetGUID(), x, y, z, o);
+        sLog->outError(LOG_FILTER_TSCR, "Creature " UI64FMTD " (Entry: %u) Tried to teleport non-player unit (Type: %u GUID: " UI64FMTD ") to x: %f y:%f z: %f o: %f. Aborted.",
+            me->GetGUID(), me->GetEntry(), unit->GetTypeId(), unit->GetGUID(), x, y, z, o);
 }
 
 void ScriptedAI::DoTeleportAll(float x, float y, float z, float o)
@@ -327,6 +327,7 @@ std::list<Creature*> ScriptedAI::DoFindFriendlyCC(float range)
     Trinity::FriendlyCCedInRange u_check(me, range);
     Trinity::CreatureListSearcher<Trinity::FriendlyCCedInRange> searcher(me, list, u_check);
     me->VisitNearbyObject(range, searcher);
+
     return list;
 }
 
@@ -336,6 +337,7 @@ std::list<Creature*> ScriptedAI::DoFindFriendlyMissingBuff(float range, uint32 u
     Trinity::FriendlyMissingBuffInRange u_check(me, range, uiSpellid);
     Trinity::CreatureListSearcher<Trinity::FriendlyMissingBuffInRange> searcher(me, list, u_check);
     me->VisitNearbyObject(range, searcher);
+
     return list;
 }
 
@@ -427,7 +429,7 @@ bool ScriptedAI::EnterEvadeIfOutOfCombatArea(uint32 const diff)
                 return false;
             break;
         default: // For most of creatures that certain area is their home area.
-            sLog->outDetail("TSCR: EnterEvadeIfOutOfCombatArea used for creature entry %u, but does not have any definition. Using the default one.", me->GetEntry());
+            sLog->outInfo(LOG_FILTER_GENERAL, "TSCR: EnterEvadeIfOutOfCombatArea used for creature entry %u, but does not have any definition. Using the default one.", me->GetEntry());
             uint32 homeAreaId = me->GetMap()->GetAreaId(me->GetHomePosition().GetPositionX(), me->GetHomePosition().GetPositionY(), me->GetHomePosition().GetPositionZ());
             if (me->GetAreaId() == homeAreaId)
                 return false;
@@ -447,7 +449,6 @@ void Scripted_NoMovementAI::AttackStart(Unit* target)
 }
 
 // BossAI - for instanced bosses
-
 BossAI::BossAI(Creature* creature, uint32 bossId) : ScriptedAI(creature),
     instance(creature->GetInstanceScript()),
     summons(creature),
@@ -499,8 +500,9 @@ void BossAI::TeleportCheaters()
 {
     float x, y, z;
     me->GetPosition(x, y, z);
-    std::list<HostileReference*>& threatList = me->getThreatManager().getThreatList();
-    for (std::list<HostileReference*>::iterator itr = threatList.begin(); itr != threatList.end(); ++itr)
+
+    ThreatContainer::StorageType threatList = me->getThreatManager().getThreatList();
+    for (ThreatContainer::StorageType::const_iterator itr = threatList.begin(); itr != threatList.end(); ++itr)
         if (Unit* target = (*itr)->getTarget())
             if (target->GetTypeId() == TYPEID_PLAYER && !CheckBoundary(target))
                 target->NearTeleportTo(x, y, z, 0);

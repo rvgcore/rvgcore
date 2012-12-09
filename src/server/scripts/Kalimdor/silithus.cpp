@@ -29,8 +29,11 @@ npcs_rutgar_and_frankal
 quest_a_pawn_on_the_eternal_pawn
 EndContentData */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
+#include "ScriptedGossip.h"
 #include "Group.h"
+#include "Player.h"
 
 /*###
 ## npc_highlord_demitrian
@@ -125,9 +128,11 @@ public:
 #define GOSSIP_ITEM14 "I should ask the monkey about this"
 #define GOSSIP_ITEM15 "Then what..."
 
-//trigger creatures to kill
-#define TRIGGER_RUTGAR 15222
-#define TRIGGER_FRANKAL 15221
+enum RutgarAndFrankal //trigger creatures to kill
+{
+    TRIGGER_FRANKAL     = 15221,
+    TRIGGER_RUTGAR      = 15222
+};
 
 class npcs_rutgar_and_frankal : public CreatureScript
 {
@@ -223,58 +228,58 @@ public:
 /*####
 # quest_a_pawn_on_the_eternal_board (Defines)
 ####*/
-enum eEternalBoard
+enum EternalBoard
 {
-    QUEST_A_PAWN_ON_THE_ETERNAL_BOARD = 8519,
+    QUEST_A_PAWN_ON_THE_ETERNAL_BOARD   = 8519,
 
-    FACTION_HOSTILE = 14,
-    FACTION_FRIENDLY = 35,
+    FACTION_HOSTILE                     = 14,
+    FACTION_FRIENDLY                    = 35,
 
-    C_ANACHRONOS = 15381,
-    C_FANDRAL_STAGHELM = 15382,
-    C_ARYGOS = 15380,
-    C_MERITHRA = 15378,
-    C_CAELESTRASZ = 15379,
+    C_ANACHRONOS                        = 15381,
+    C_FANDRAL_STAGHELM                  = 15382,
+    C_ARYGOS                            = 15380,
+    C_MERITHRA                          = 15378,
+    C_CAELESTRASZ                       = 15379,
 
-    ANACHRONOS_SAY_1 = -1350000,
-    ANACHRONOS_SAY_2 = -1350001,
-    ANACHRONOS_SAY_3 = -1350002,
-    ANACHRONOS_SAY_4 = -1350003,
-    ANACHRONOS_SAY_5 = -1350004,
-    ANACHRONOS_SAY_6 = -1350005,
-    ANACHRONOS_SAY_7 = -1350006,
-    ANACHRONOS_SAY_8 = -1350007,
-    ANACHRONOS_SAY_9 = -1350008,
-    ANACHRONOS_SAY_10 = -1350009,
-    ANACHRONOS_EMOTE_1 = -1350010,
-    ANACHRONOS_EMOTE_2 = -1350011,
-    ANACHRONOS_EMOTE_3 = -1350012,
+    ANACHRONOS_SAY_1                    = 0,
+    ANACHRONOS_SAY_2                    = 1,
+    ANACHRONOS_SAY_3                    = 2,
+    ANACHRONOS_SAY_4                    = 3,
+    ANACHRONOS_SAY_5                    = 4,
+    ANACHRONOS_SAY_6                    = 5,
+    ANACHRONOS_SAY_7                    = 6,
+    ANACHRONOS_SAY_8                    = 7,
+    ANACHRONOS_SAY_9                    = 8,
+    ANACHRONOS_SAY_10                   = 9,
+    ANACHRONOS_EMOTE_1                  = 10,
+    ANACHRONOS_EMOTE_2                  = 11,
+    ANACHRONOS_EMOTE_3                  = 12,
 
-    FANDRAL_SAY_1 = -1350013,
-    FANDRAL_SAY_2 = -1350014,
-    FANDRAL_SAY_3 = -1350015,
-    FANDRAL_SAY_4 = -1350016,
-    FANDRAL_SAY_5 = -1350017,
-    FANDRAL_SAY_6 = -1350018,
-    FANDRAL_EMOTE_1 = -1350019,
-    FANDRAL_EMOTE_2 = -1350020,
+    FANDRAL_SAY_1                       = 0,
+    FANDRAL_SAY_2                       = 1,
+    FANDRAL_SAY_3                       = 2,
+    FANDRAL_SAY_4                       = 3,
+    FANDRAL_SAY_5                       = 4,
+    FANDRAL_SAY_6                       = 5,
+    FANDRAL_EMOTE_1                     = 6,
+    FANDRAL_EMOTE_2                     = 7,
 
-    CAELESTRASZ_SAY_1 = -1350021,
-    CAELESTRASZ_SAY_2 = -1350022,
-    CAELESTRASZ_YELL_1 = -1350023,
+    CAELESTRASZ_SAY_1                   = 0,
+    CAELESTRASZ_SAY_2                   = 1,
+    CAELESTRASZ_YELL_1                  = 2,
 
-    ARYGOS_SAY_1 = -1350024,
-    ARYGOS_YELL_1 = -1350025,
-    ARYGOS_EMOTE_1 = -1350026,
+    ARYGOS_SAY_1                        = 0,
+    ARYGOS_YELL_1                       = 1,
+    ARYGOS_EMOTE_1                      = 2,
 
-    MERITHRA_SAY_1 = -1350027,
-    MERITHRA_SAY_2 = -1350028,
-    MERITHRA_YELL_1 = -1350029,
-    MERITHRA_EMOTE_1 = -1350030,
+    MERITHRA_SAY_1                      = 0,
+    MERITHRA_SAY_2                      = 1,
+    MERITHRA_YELL_1                     = 2,
+    MERITHRA_EMOTE_1                    = 3,
 
-    GO_GATE_OF_AHN_QIRAJ = 176146,
-    GO_GLYPH_OF_AHN_QIRAJ = 176148,
-    GO_ROOTS_OF_AHN_QIRAJ = 176147
+    GO_GATE_OF_AHN_QIRAJ                = 176146,
+    GO_GLYPH_OF_AHN_QIRAJ               = 176148,
+    GO_ROOTS_OF_AHN_QIRAJ               = 176147
 };
 /*#####
 # Quest: A Pawn on the Eternal Board
@@ -290,7 +295,6 @@ TO DO: get correct spell IDs and timings for spells cast upon dragon transformat
 TO DO: Dragons should use the HandleEmoteCommand(EMOTE_ONESHOT_LIFTOFF) after transformation, but for some unknown reason it doesnt work.
 EndContentData */
 
-#define QUEST_A_PAWN_ON_THE_ETERNAL_BOARD 8519
 #define EVENT_AREA_RADIUS 65 //65yds
 #define EVENT_COOLDOWN 500000 //in ms. appear after event completed or failed (should be = Adds despawn time)
 
@@ -373,13 +377,8 @@ static QuestCinematic EventAnim[]=
     {0, 0, 0}
 };
 
-struct Location
-{
-   float x, y, z, o;
-};
-
 //Cordinates for Spawns
-static Location SpawnLocation[]=
+Position const SpawnLocation[] =
 {
     {-8085.0f, 1528.0f, 2.61f, 3.141592f}, //Kaldorei Infantry
     {-8080.0f, 1526.0f, 2.61f, 3.141592f}, //Kaldorei Infantry
@@ -460,7 +459,7 @@ struct WaveData
     int32 WaveTextId;
 };
 
-static WaveData WavesInfo[] =
+static WaveData WavesInfo[5] =
 {
     {30,  0, 15423, 0, 0, 24000, 0},    // Kaldorei Soldier
     { 3, 35, 15424, 0, 0, 24000, 0},    // Anubisath Conqueror
@@ -475,7 +474,7 @@ struct SpawnSpells
     uint32 Timer1, Timer2, SpellId;
 };
 
-static SpawnSpells SpawnCast[]=//
+static SpawnSpells SpawnCast[4] =
 {
     {100000, 2000, 33652},   // Stop Time
     {38500, 300000, 28528},  // Poison Cloud
@@ -531,50 +530,49 @@ public:
             if (!player)
                 return;
 
-            Unit* Fandral = player->FindNearestCreature(C_FANDRAL_STAGHELM, 100.0f, me);
-            Unit* Arygos = player->FindNearestCreature(C_ARYGOS, 100.0f, me);
-            Unit* Caelestrasz = player->FindNearestCreature(C_CAELESTRASZ, 100.0f, me);
-            Unit* Merithra = player->FindNearestCreature(C_MERITHRA, 100.0f, me);
+            Creature* Fandral = player->FindNearestCreature(C_FANDRAL_STAGHELM, 100.0f, me);
+            Creature* Arygos = player->FindNearestCreature(C_ARYGOS, 100.0f, me);
+            Creature* Caelestrasz = player->FindNearestCreature(C_CAELESTRASZ, 100.0f, me);
+            Creature* Merithra = player->FindNearestCreature(C_MERITHRA, 100.0f, me);
 
             if (!Fandral || !Arygos || !Caelestrasz || !Merithra)
                 return;
 
-            Unit* mob = NULL;
             AnimationTimer = EventAnim[AnimationCount].Timer;
             if (eventEnd == false)
             {
                 switch (AnimationCount)
                 {
                     case 0:
-                        DoScriptText(ANACHRONOS_SAY_1, me, Fandral);
+                        Talk(ANACHRONOS_SAY_1,Fandral->GetGUID());
                         break;
                     case 1:
                         Fandral->SetTarget(me->GetGUID());
-                        DoScriptText(FANDRAL_SAY_1, Fandral, me);
+                        Fandral->AI()->Talk(FANDRAL_SAY_1, me->GetGUID());
                         break;
                     case 2:
                         Fandral->SetTarget(0);
-                        DoScriptText(MERITHRA_EMOTE_1, Merithra);
+                        Merithra->AI()->Talk(MERITHRA_EMOTE_1);
                         break;
                     case 3:
-                        DoScriptText(MERITHRA_SAY_1, Merithra);
+                        Merithra->AI()->Talk(MERITHRA_SAY_1);
                         break;
                     case 4:
-                        DoScriptText(ARYGOS_EMOTE_1, Arygos);
+                        Arygos->AI()->Talk(ARYGOS_EMOTE_1);
                         break;
                     case 5:
                         Caelestrasz->SetTarget(Fandral->GetGUID());
-                        DoScriptText(CAELESTRASZ_SAY_1, Caelestrasz);
+                        Caelestrasz->AI()->Talk(CAELESTRASZ_SAY_1);
                         break;
                     case 6:
-                        DoScriptText(MERITHRA_SAY_2, Merithra);
+                        Merithra->AI()->Talk(MERITHRA_SAY_2);
                         break;
                     case 7:
                         Caelestrasz->SetTarget(0);
                         Merithra->GetMotionMaster()->MoveCharge(-8065, 1530, 2.61f, 10);
                         break;
                     case 8:
-                        DoScriptText(MERITHRA_YELL_1, Merithra);
+                        Merithra->AI()->Talk(MERITHRA_YELL_1);
                         break;
                     case 9:
                         Merithra->CastSpell(Merithra, 25105, true);
@@ -593,7 +591,7 @@ public:
                     case 13:
                         break;
                     case 14:
-                        DoScriptText(ARYGOS_SAY_1, Arygos);
+                        Arygos->AI()->Talk(ARYGOS_SAY_1);
                         Merithra->SetVisible(false);
                         break;
                     case 15:
@@ -601,7 +599,7 @@ public:
                         Merithra->GetMotionMaster()->MoveCharge(-8034.535f, 1535.14f, 2.61f, 42);
                         break;
                     case 16:
-                        DoScriptText(ARYGOS_YELL_1, Arygos);
+                        Arygos->AI()->Talk(ARYGOS_YELL_1);
                         break;
                     case 17:
                         Arygos->CastSpell(Arygos, 25107, true);
@@ -620,7 +618,7 @@ public:
                     case 21:
                         break;
                     case 22:
-                        DoScriptText(CAELESTRASZ_SAY_2, Caelestrasz, Fandral);
+                        Caelestrasz->AI()->Talk(CAELESTRASZ_SAY_2, Fandral->GetGUID());
                         break;
                     case 23:
                         Caelestrasz->GetMotionMaster()->MoveCharge(-8065, 1530, 2.61f, 10);
@@ -628,7 +626,7 @@ public:
                         Arygos->GetMotionMaster()->MoveCharge(-8034.535f, 1535.14f, 2.61f, 10);
                         break;
                     case 24:
-                        DoScriptText(CAELESTRASZ_YELL_1, Caelestrasz);
+                        Caelestrasz->AI()->Talk(CAELESTRASZ_YELL_1);
                         break;
                     case 25:
                         Caelestrasz->CastSpell(Caelestrasz, 25106, true);
@@ -642,16 +640,16 @@ public:
                         Caelestrasz->CastSpell(Caelestrasz, 54293, false);
                         break;
                     case 28:
-                        DoScriptText(ANACHRONOS_SAY_2, me, Fandral);
+                        Talk(ANACHRONOS_SAY_2, Fandral->GetGUID());
                         break;
                     case 29:
                         Caelestrasz->GetMotionMaster()->MoveCharge(-8095, 1530, 50, 42);
-                        DoScriptText(FANDRAL_SAY_2, Fandral, me);
+                        Fandral->AI()->Talk(FANDRAL_SAY_2);
                         break;
                     case 30:
                         break;
                     case 31:
-                        DoScriptText(ANACHRONOS_SAY_3, me, Fandral);
+                        Talk(ANACHRONOS_SAY_3, Fandral->GetGUID());
                         break;
                     case 32:
                         Caelestrasz->SetVisible(false);
@@ -660,7 +658,7 @@ public:
                         me->GetMotionMaster()->MoveCharge(-8113, 1525, 2.77f, 8);
                         break;//both run to the gate
                     case 33:
-                        DoScriptText(ANACHRONOS_SAY_4, me);
+                        Talk(ANACHRONOS_SAY_4);
                         Caelestrasz->GetMotionMaster()->MoveCharge(-8050, 1473, 65, 15);
                         break; //Text: sands will stop
                     case 34:
@@ -680,48 +678,49 @@ public:
                         me->SummonGameObject(GO_GLYPH_OF_AHN_QIRAJ, -8130, 1525, 17.5f, 0, 0, 0, 0, 0, 0);
                         break;
                     case 39:
-                        DoScriptText(ANACHRONOS_SAY_5, me, Fandral);
+                        Talk(ANACHRONOS_SAY_5, Fandral->GetGUID());
                         break;
                     case 40:
                         Fandral->CastSpell(me, 25167, true);
                         break;
                     case 41:
                         Fandral->SummonGameObject(GO_ROOTS_OF_AHN_QIRAJ, -8130, 1525, 17.5f, 0, 0, 0, 0, 0, 0);
-                        DoScriptText(FANDRAL_SAY_3, Fandral);
+                        Fandral->AI()->Talk(FANDRAL_SAY_3);
                         break;
                     case 42:
                         me->CastStop();
-                        DoScriptText(FANDRAL_EMOTE_1, Fandral);
+                        Fandral->AI()->Talk(FANDRAL_EMOTE_1);
                         break;
                     case 43:
                         Fandral->CastStop();
                         break;
                     case 44:
-                        DoScriptText(ANACHRONOS_SAY_6, me);
+                        Talk(ANACHRONOS_SAY_6);
                         break;
                     case 45:
-                        DoScriptText(ANACHRONOS_SAY_7, me);
+                        Talk(ANACHRONOS_SAY_7);
                         break;
                     case 46:
-                        DoScriptText(ANACHRONOS_SAY_8, me);
+                        Talk(ANACHRONOS_SAY_8);
                         me->GetMotionMaster()->MoveCharge(-8110, 1527, 2.77f, 4);
                         break;
                     case 47:
-                        DoScriptText(ANACHRONOS_EMOTE_1, me);
+                        Talk(ANACHRONOS_EMOTE_1);
                         break;
                     case 48:
-                        DoScriptText(FANDRAL_SAY_4, Fandral, me);
+                        Fandral->AI()->Talk(FANDRAL_SAY_4, me->GetGUID());
                         break;
                     case 49:
-                        DoScriptText(FANDRAL_SAY_5, Fandral, me);
+                        Fandral->AI()->Talk(FANDRAL_SAY_5, me->GetGUID());
                         break;
                     case 50:
-                        DoScriptText(FANDRAL_EMOTE_2, Fandral);
+                        Fandral->AI()->Talk(FANDRAL_EMOTE_2);
                         Fandral->CastSpell(-8127, 1525, 17.5f, 33806, true);
                         break;
                     case 51:
                     {
                         uint32 entries[4] = { 15423, 15424, 15414, 15422 };
+                        Unit* mob = NULL;
                         for (uint8 i = 0; i < 4; ++i)
                         {
                             mob = player->FindNearestCreature(entries[i], 50, me);
@@ -735,19 +734,19 @@ public:
                     }
                     case 52:
                         Fandral->GetMotionMaster()->MoveCharge(-8028.75f, 1538.795f, 2.61f, 4);
-                        DoScriptText(ANACHRONOS_SAY_9, me, Fandral);
+                        Fandral->AI()->Talk(ANACHRONOS_SAY_9, me->GetGUID());
                         break;
                     case 53:
-                        DoScriptText(FANDRAL_SAY_6, Fandral);
+                        Fandral->AI()->Talk(FANDRAL_SAY_6);
                         break;
                     case 54:
-                        DoScriptText(ANACHRONOS_EMOTE_2, me);
+                        Talk(ANACHRONOS_EMOTE_2);
                         break;
                     case 55:
                         Fandral->SetVisible(false);
                         break;
                     case 56:
-                        DoScriptText(ANACHRONOS_EMOTE_3, me);
+                        Talk(ANACHRONOS_EMOTE_3);
                         me->GetMotionMaster()->MoveCharge(-8116, 1522, 3.65f, 4);
                         break;
                     case 57:
@@ -761,7 +760,7 @@ public:
                         break;
                     case 60:
                         if (player)
-                            DoScriptText(ANACHRONOS_SAY_10, me, player);
+                            Talk(ANACHRONOS_SAY_10, player->GetGUID());
                         me->GetMotionMaster()->MoveCharge(-8113.46f, 1524.16f, 2.89f, 4);
                         break;
                     case 61:
@@ -783,7 +782,7 @@ public:
                         me->SetVisible(false);
                         if (Creature* AnachronosQuestTrigger = (Unit::GetCreature(*me, AnachronosQuestTriggerGUID)))
                         {
-                            DoScriptText(ARYGOS_YELL_1, me);
+                            Talk(ARYGOS_YELL_1);
                             AnachronosQuestTrigger->AI()->EnterEvadeMode();
                             eventEnd=true;
                         }
@@ -846,9 +845,6 @@ public:
 
         void UpdateAI(const uint32 diff)
         {
-            Unit* target = NULL;
-            //Player* player = me->GetPlayer(PlayerGUID);
-
             if (!Timers)
             {
                 if (me->GetEntry() == 15424 || me->GetEntry() == 15422 || me->GetEntry() == 15414) //all but Kaldorei Soldiers
@@ -892,6 +888,7 @@ public:
             }
             if (!hasTarget)
             {
+                Unit* target = NULL;
                 if (me->GetEntry() == 15424 || me->GetEntry() == 15422 || me->GetEntry() == 15414)
                     target = me->FindNearestCreature(15423, 20, true);
                 if (me->GetEntry() == 15423)
@@ -977,13 +974,9 @@ public:
 
             for (uint8 i = locIndex; i <= count; ++i)
             {
-                float x = SpawnLocation[i].x;
-                float y = SpawnLocation[i].y;
-                float z = SpawnLocation[i].z;
-                float o = SpawnLocation[i].o;
                 uint32 desptimer = WavesInfo[WaveCount].DespTimer;
 
-                if (Creature* spawn = me->SummonCreature(WavesInfo[WaveCount].CreatureId, x, y, z, o, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, desptimer))
+                if (Creature* spawn = me->SummonCreature(WavesInfo[WaveCount].CreatureId, SpawnLocation[i], TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, desptimer))
                 {
                     if (spawn->GetEntry() == 15423)
                         spawn->SetUInt32Value(UNIT_FIELD_DISPLAYID, 15427+rand()%4);
@@ -1061,7 +1054,7 @@ public:
             {
                 if (!Announced && AnnounceTimer <= diff)
                 {
-                    DoScriptText(WavesInfo[WaveCount].WaveTextId, me);
+                    Talk(WavesInfo[WaveCount].WaveTextId);
                     Announced = true;
                 } else AnnounceTimer -= diff;
 
@@ -1297,37 +1290,37 @@ class go_wind_stone : public GameObjectScript
             {
                 case TEMPLAR:
                 {
-                    if (player->HasItemCount(ITEM_TEMPLAR_FIRE, 1))
+                    if (player->HasItemCount(ITEM_TEMPLAR_FIRE))
                         result |= FIRE;
-                    if (player->HasItemCount(ITEM_TEMPLAR_WATER, 1))
+                    if (player->HasItemCount(ITEM_TEMPLAR_WATER))
                         result |= WATER;
-                    if (player->HasItemCount(ITEM_TEMPLAR_EARTH, 1))
+                    if (player->HasItemCount(ITEM_TEMPLAR_EARTH))
                         result |= EARTH;
-                    if (player->HasItemCount(ITEM_TEMPLAR_AIR, 1))
+                    if (player->HasItemCount(ITEM_TEMPLAR_AIR))
                         result |= AIR;
                     break;
                 }
                 case DUKE:
                 {
-                    if (player->HasItemCount(ITEM_DUKE_FIRE, 1))
+                    if (player->HasItemCount(ITEM_DUKE_FIRE))
                         result |= FIRE;
-                    if (player->HasItemCount(ITEM_DUKE_WATER, 1))
+                    if (player->HasItemCount(ITEM_DUKE_WATER))
                         result |= WATER;
-                    if (player->HasItemCount(ITEM_DUKE_EARTH, 1))
+                    if (player->HasItemCount(ITEM_DUKE_EARTH))
                         result |= EARTH;
-                    if (player->HasItemCount(ITEM_DUKE_AIR, 1))
+                    if (player->HasItemCount(ITEM_DUKE_AIR))
                         result |= AIR;
                     break;
                 }
                 case ROYAL:
                 {
-                    if (player->HasItemCount(ITEM_ROYAL_FIRE, 1))
+                    if (player->HasItemCount(ITEM_ROYAL_FIRE))
                         result |= FIRE;
-                    if (player->HasItemCount(ITEM_ROYAL_WATER, 1))
+                    if (player->HasItemCount(ITEM_ROYAL_WATER))
                         result |= WATER;
-                    if (player->HasItemCount(ITEM_ROYAL_EARTH, 1))
+                    if (player->HasItemCount(ITEM_ROYAL_EARTH))
                         result |= EARTH;
-                    if (player->HasItemCount(ITEM_ROYAL_AIR, 1))
+                    if (player->HasItemCount(ITEM_ROYAL_AIR))
                         result |= AIR;
                     break;
                 }

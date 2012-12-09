@@ -23,20 +23,22 @@ SDComment:
 SDCategory: Scarlet Monastery
 EndScriptData */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
 #include "scarlet_monastery.h"
+#include "SpellInfo.h"
 
 enum Says
 {
     //Mograine says
-    SAY_MO_AGGRO                 = -1189005,
-    SAY_MO_KILL                  = -1189006,
-    SAY_MO_RESSURECTED           = -1189007,
+    SAY_MO_AGGRO                 = 0,
+    SAY_MO_KILL                  = 1,
+    SAY_MO_RESSURECTED           = 2,
 
     //Whitemane says
-    SAY_WH_INTRO                 = -1189008,
-    SAY_WH_KILL                  = -1189009,
-    SAY_WH_RESSURECT             = -1189010,
+    SAY_WH_INTRO                 = 0,
+    SAY_WH_KILL                  = 1,
+    SAY_WH_RESSURECT             = 2,
 };
 
 enum Spells
@@ -112,7 +114,7 @@ public:
 
         void EnterCombat(Unit* /*who*/)
         {
-            DoScriptText(SAY_MO_AGGRO, me);
+            Talk(SAY_MO_AGGRO);
             DoCast(me, SPELL_RETRIBUTIONAURA);
 
             me->CallForHelp(VISIBLE_RANGE);
@@ -120,7 +122,7 @@ public:
 
         void KilledUnit(Unit* /*victim*/)
         {
-            DoScriptText(SAY_MO_KILL, me);
+            Talk(SAY_MO_KILL);
         }
 
         void DamageTaken(Unit* /*doneBy*/, uint32 &damage)
@@ -165,7 +167,7 @@ public:
             //When hit with ressurection say text
             if (spell->Id == SPELL_SCARLETRESURRECTION)
             {
-                DoScriptText(SAY_MO_RESSURECTED, me);
+                Talk(SAY_MO_RESSURECTED);
                 _bFakeDeath = false;
 
                 if (instance)
@@ -274,12 +276,18 @@ public:
 
         void EnterCombat(Unit* /*who*/)
         {
-            DoScriptText(SAY_WH_INTRO, me);
+            Talk(SAY_WH_INTRO);
         }
 
         void KilledUnit(Unit* /*victim*/)
         {
-            DoScriptText(SAY_WH_KILL, me);
+            Talk(SAY_WH_KILL);
+        }
+
+        void DamageTaken(Unit* /*attacker*/, uint32& damage)
+        {
+            if (!_bCanResurrectCheck && damage >= me->GetHealth())
+                damage = me->GetHealth() - 1;
         }
 
         void UpdateAI(const uint32 diff)
@@ -295,7 +303,7 @@ public:
                     if (Unit* Mograine = Unit::GetUnit(*me, instance->GetData64(DATA_MOGRAINE)))
                     {
                         DoCast(Mograine, SPELL_SCARLETRESURRECTION);
-                        DoScriptText(SAY_WH_RESSURECT, me);
+                        Talk(SAY_WH_RESSURECT);
                         _bCanResurrect = false;
                     }
                 }

@@ -50,8 +50,10 @@ class ByteBufferPositionException : public ByteBufferException
     protected:
         void PrintError() const
         {
-            sLog->outError("Attempted to %s value with size: "SIZEFMTD" in ByteBuffer (pos: " SIZEFMTD " size: "SIZEFMTD") " ,
-                (_add ? "put" : "get"), ValueSize, Pos, Size);
+            ACE_Stack_Trace trace;
+
+            sLog->outError(LOG_FILTER_NETWORKIO, "Attempted to %s value with size: "SIZEFMTD" in ByteBuffer (pos: " SIZEFMTD " size: "SIZEFMTD")\n[Stacktrace: %s]" ,
+                (_add ? "put" : "get"), ValueSize, Pos, Size, trace.c_str());
         }
 
     private:
@@ -70,8 +72,10 @@ class ByteBufferSourceException : public ByteBufferException
     protected:
         void PrintError() const
         {
-            sLog->outError("Attempted to put a %s in ByteBuffer (pos: "SIZEFMTD" size: "SIZEFMTD")",
-                (ValueSize > 0 ? "NULL-pointer" : "zero-sized value"), Pos, Size);
+            ACE_Stack_Trace trace;
+
+            sLog->outError(LOG_FILTER_NETWORKIO, "Attempted to put a %s in ByteBuffer (pos: "SIZEFMTD" size: "SIZEFMTD")\n[Stacktrace: %s]",
+                (ValueSize > 0 ? "NULL-pointer" : "zero-sized value"), Pos, Size, trace.c_str());
         }
 };
 
@@ -185,8 +189,7 @@ class ByteBuffer
 
         ByteBuffer &operator<<(const char *str)
         {
-            size_t len = 0;
-            if (str && (len = strlen(str)))
+            if (size_t len = (str ? strlen(str) : 0))
                 append((uint8 const*)str, len);
             append((uint8)0);
             return *this;
@@ -356,6 +359,28 @@ class ByteBuffer
             }
         }
 
+        uint32 ReadPackedTime()
+        {
+            uint32 packedDate = read<uint32>();
+            tm lt;
+            memset(&lt, 0, sizeof(lt));
+
+            lt.tm_min = packedDate & 0x3F;
+            lt.tm_hour = (packedDate >> 6) & 0x1F;
+            //lt.tm_wday = (packedDate >> 11) & 7;
+            lt.tm_mday = ((packedDate >> 14) & 0x3F) + 1;
+            lt.tm_mon = (packedDate >> 20) & 0xF;
+            lt.tm_year = ((packedDate >> 24) & 0x1F) + 100;
+
+            return uint32(mktime(&lt) + timezone);
+        }
+
+        ByteBuffer& ReadPackedTime(uint32& time)
+        {
+            time = ReadPackedTime();
+            return *this;
+        }
+
         const uint8 *contents() const { return &_storage[0]; }
 
         size_t size() const { return _storage.size(); }
@@ -435,6 +460,12 @@ class ByteBuffer
             append(packGUID, size);
         }
 
+        void AppendPackedTime(time_t time)
+        {
+            tm* lt = localtime(&time);
+            append<uint32>((lt->tm_year - 100) << 24 | lt->tm_mon  << 20 | (lt->tm_mday - 1) << 14 | lt->tm_wday << 11 | lt->tm_hour << 6 | lt->tm_min);
+        }
+
         void put(size_t pos, const uint8 *src, size_t cnt)
         {
             if (pos + cnt > size())
@@ -448,79 +479,65 @@ class ByteBuffer
 
         void print_storage() const
         {
-            if (!sLog->IsOutDebug())                          // optimize disabled debug output
+            if (!sLog->ShouldLog(LOG_FILTER_NETWORKIO, LOG_LEVEL_TRACE)) // optimize disabled debug output
                 return;
 
-            sLog->outDebug(LOG_FILTER_NETWORKIO, "STORAGE_SIZE: %lu", (unsigned long)size() );
+            std::ostringstream o;
+            o << "STORAGE_SIZE: " << size();
             for (uint32 i = 0; i < size(); ++i)
-                sLog->outDebugInLine("%u - ", read<uint8>(i) );
-            sLog->outDebug(LOG_FILTER_NETWORKIO, " ");
+                o << read<uint8>(i) << " - ";
+            o << " ";
+
+            sLog->outTrace(LOG_FILTER_NETWORKIO, "%s", o.str().c_str());
         }
 
         void textlike() const
         {
-            if (!sLog->IsOutDebug())                          // optimize disabled debug output
+            if (!sLog->ShouldLog(LOG_FILTER_NETWORKIO, LOG_LEVEL_TRACE)) // optimize disabled debug output
                 return;
 
-            sLog->outDebug(LOG_FILTER_NETWORKIO, "STORAGE_SIZE: %lu", (unsigned long)size() );
+            std::ostringstream o;
+            o << "STORAGE_SIZE: " << size();
             for (uint32 i = 0; i < size(); ++i)
-                sLog->outDebugInLine("%c", read<uint8>(i) );
-            sLog->outDebug(LOG_FILTER_NETWORKIO, " ");
+            {
+                char buf[1];
+                snprintf(buf, 1, "%c", read<uint8>(i));
+                o << buf;
+            }
+            o << " ";
+            sLog->outTrace(LOG_FILTER_NETWORKIO, "%s", o.str().c_str());
         }
 
         void hexlike() const
         {
-            if (!sLog->IsOutDebug())                          // optimize disabled debug output
+            if (!sLog->ShouldLog(LOG_FILTER_NETWORKIO, LOG_LEVEL_TRACE)) // optimize disabled debug output
                 return;
 
             uint32 j = 1, k = 1;
-            sLog->outDebug(LOG_FILTER_NETWORKIO, "STORAGE_SIZE: %lu", (unsigned long)size() );
+
+            std::ostringstream o;
+            o << "STORAGE_SIZE: " << size();
 
             for (uint32 i = 0; i < size(); ++i)
             {
+                char buf[3];
+                snprintf(buf, 1, "%2X ", read<uint8>(i));
                 if ((i == (j * 8)) && ((i != (k * 16))))
                 {
-                    if (read<uint8>(i) < 0x10)
-                    {
-                        sLog->outDebugInLine("| 0%X ", read<uint8>(i) );
-                    }
-                    else
-                    {
-                        sLog->outDebugInLine("| %X ", read<uint8>(i) );
-                    }
+                    o << "| ";
                     ++j;
                 }
                 else if (i == (k * 16))
                 {
-                    if (read<uint8>(i) < 0x10)
-                    {
-                        sLog->outDebugInLine("\n");
-
-                        sLog->outDebugInLine("0%X ", read<uint8>(i) );
-                    }
-                    else
-                    {
-                        sLog->outDebugInLine("\n");
-
-                        sLog->outDebugInLine("%X ", read<uint8>(i) );
-                    }
-
+                    o << "\n";
                     ++k;
                     ++j;
                 }
-                else
-                {
-                    if (read<uint8>(i) < 0x10)
-                    {
-                        sLog->outDebugInLine("0%X ", read<uint8>(i) );
-                    }
-                    else
-                    {
-                        sLog->outDebugInLine("%X ", read<uint8>(i) );
-                    }
-                }
+
+                o << buf;
             }
-            sLog->outDebugInLine("\n");
+            o << " ";
+            sLog->outTrace(LOG_FILTER_NETWORKIO, "%s", o.str().c_str());
         }
 
     protected:

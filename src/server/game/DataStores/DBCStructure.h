@@ -221,7 +221,8 @@ struct AchievementCriteriaEntry
         // ACHIEVEMENT_CRITERIA_TYPE_WIN_ARENA              = 32
         struct
         {
-            uint32  mapID;                                  // 3 Reference to Map.dbc
+            uint32 mapID;                                   // 3 Reference to Map.dbc
+            uint32 count;                                   // 4 Number of times that the arena must be won.
         } win_arena;
 
         // ACHIEVEMENT_CRITERIA_TYPE_PLAY_ARENA             = 33
@@ -1052,7 +1053,7 @@ struct GtRegenMPPerSptEntry
 /* no used
 struct HolidayDescriptionsEntry
 {
-    uint32 ID;                                              // 0, this is NOT holiday id
+    uint32 ID;                                              // 0, m_holidayDescriptionID
     //char*     name[16]                                    // 1-16 m_name_lang
                                                             // 17 name flags
 };
@@ -1061,7 +1062,7 @@ struct HolidayDescriptionsEntry
 /* no used
 struct HolidayNamesEntry
 {
-    uint32 ID;                                              // 0, this is NOT holiday id
+    uint32 ID;                                              // 0, m_holidayNameID
     //char*     name[16]                                    // 1-16 m_name_lang
     // 17 name flags
 };
@@ -1092,7 +1093,7 @@ struct ItemEntry
    uint32   ID;                                             // 0
    uint32   Class;                                          // 1
    uint32   SubClass;                                       // 2 some items have strange subclasses
-   int32    Unk0;                                           // 3
+   int32    SoundOverrideSubclass;                          // 3
    int32    Material;                                       // 4
    uint32   DisplayId;                                      // 5
    uint32   InventoryType;                                  // 6
@@ -1195,7 +1196,7 @@ struct ItemSetEntry
 struct LFGDungeonEntry
 {
     uint32  ID;                                             // 0
-    //char*   name[16];                                     // 1-17 Name lang
+    char*   name[16];                                       // 1-17 Name lang
     uint32  minlevel;                                       // 18
     uint32  maxlevel;                                       // 19
     uint32  reclevel;                                       // 20
@@ -1203,7 +1204,7 @@ struct LFGDungeonEntry
     uint32  recmaxlevel;                                    // 22
     int32   map;                                            // 23
     uint32  difficulty;                                     // 24
-    //uint32  flags;                                        // 25
+    uint32  flags;                                          // 25
     uint32  type;                                           // 26
     //uint32  unk;                                          // 27
     //char*   iconname;                                     // 28
@@ -1676,9 +1677,9 @@ struct SpellFocusObjectEntry
 struct SpellRadiusEntry
 {
     uint32    ID;
-    float     radiusMin;
-    //uint32    Unk    //always 0
-    float     radiusMax;
+    float     RadiusMin;
+    float     RadiusPerLevel;
+    float     RadiusMax;
 };
 
 struct SpellRangeEntry

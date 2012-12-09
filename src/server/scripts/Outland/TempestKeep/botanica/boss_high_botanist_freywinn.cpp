@@ -23,16 +23,15 @@ SDComment: some strange visual related to tree form(if aura lost before normal d
 SDCategory: Tempest Keep, The Botanica
 EndScriptData */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
 
 enum eSays
 {
-    SAY_AGGRO                  = -1553000,
-    SAY_KILL_1                 = -1553001,
-    SAY_KILL_2                 = -1553002,
-    SAY_TREE_1                 = -1553003,
-    SAY_TREE_2                 = -1553004,
-    SAY_DEATH                  = -1553005,
+    SAY_AGGRO                  = 0,
+    SAY_KILL                   = 1,
+    SAY_TREE                   = 2,
+    SAY_DEATH                  = 3
 };
 
 enum eSpells
@@ -82,7 +81,7 @@ class boss_high_botanist_freywinn : public CreatureScript
 
             void EnterCombat(Unit* /*who*/)
             {
-                DoScriptText(SAY_AGGRO, me);
+                Talk(SAY_AGGRO);
             }
 
             void JustSummoned(Creature* summoned)
@@ -104,12 +103,12 @@ class boss_high_botanist_freywinn : public CreatureScript
 
             void KilledUnit(Unit* /*victim*/)
             {
-                DoScriptText(RAND(SAY_KILL_1, SAY_KILL_2), me);
+                Talk(SAY_KILL);
             }
 
             void JustDied(Unit* /*killer*/)
             {
-                DoScriptText(SAY_DEATH, me);
+                Talk(SAY_DEATH);
             }
 
             void UpdateAI(const uint32 diff)
@@ -119,7 +118,7 @@ class boss_high_botanist_freywinn : public CreatureScript
 
                 if (TreeForm_Timer <= diff)
                 {
-                    DoScriptText(RAND(SAY_TREE_1, SAY_TREE_2), me);
+                    Talk(SAY_TREE);
 
                     if (me->IsNonMeleeSpellCasted(false))
                         me->InterruptNonMeleeSpells(true);

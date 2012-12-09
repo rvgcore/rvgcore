@@ -23,22 +23,23 @@ SDComment:
 SDCategory: Zul'Aman
 EndScriptData */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
 #include "zulaman.h"
 #include "GridNotifiers.h"
+#include "CellImpl.h"
 
 enum eEnums
 {
-    SAY_AGGRO                   = -1568000,
-    SAY_FIRE_BOMBS              = -1568001,
-    SAY_SUMMON_HATCHER          = -1568002,
-    SAY_ALL_EGGS                = -1568003,
-    SAY_BERSERK                 = -1568004,
-    SAY_SLAY_1                  = -1568005,
-    SAY_SLAY_2                  = -1568006,
-    SAY_DEATH                   = -1568007,
-    SAY_EVENT_STRANGERS         = -1568008,
-    SAY_EVENT_FRIENDS           = -1568009,
+    SAY_AGGRO                   = 0,
+    SAY_FIRE_BOMBS              = 1,
+    SAY_SUMMON_HATCHER          = 2,
+    SAY_ALL_EGGS                = 3,
+    SAY_BERSERK                 = 4,
+    SAY_SLAY                    = 5,
+    SAY_DEATH                   = 6,
+    SAY_EVENT_STRANGERS         = 7,
+    SAY_EVENT_FRIENDS           = 8,
 
 // Jan'alai
     SPELL_FLAME_BREATH          = 43140,
@@ -161,7 +162,7 @@ class boss_janalai : public CreatureScript
 
             void JustDied(Unit* /*killer*/)
             {
-                DoScriptText(SAY_DEATH, me);
+                Talk(SAY_DEATH);
 
                 if (instance)
                     instance->SetData(DATA_JANALAIEVENT, DONE);
@@ -169,7 +170,7 @@ class boss_janalai : public CreatureScript
 
             void KilledUnit(Unit* /*victim*/)
             {
-                DoScriptText(RAND(SAY_SLAY_1, SAY_SLAY_2), me);
+                Talk(SAY_SLAY);
             }
 
             void EnterCombat(Unit* /*who*/)
@@ -177,7 +178,7 @@ class boss_janalai : public CreatureScript
                 if (instance)
                     instance->SetData(DATA_JANALAIEVENT, IN_PROGRESS);
 
-                DoScriptText(SAY_AGGRO, me);
+                Talk(SAY_AGGRO);
         //        DoZoneInCombat();
             }
 
@@ -246,7 +247,7 @@ class boss_janalai : public CreatureScript
                     cell.Visit(pair, cSearcher, *me->GetMap(), *me, me->GetGridActivationRange());
                 }
 
-                //sLog->outError("Eggs %d at middle", templist.size());
+                //sLog->outError(LOG_FILTER_TSCR, "Eggs %d at middle", templist.size());
                 if (templist.empty())
                     return false;
 
@@ -350,7 +351,7 @@ class boss_janalai : public CreatureScript
                     }
                     else
                     {
-                        DoScriptText(SAY_BERSERK, me);
+                        Talk(SAY_BERSERK);
                         DoCast(me, SPELL_BERSERK, true);
                         EnrageTimer = 300000;
                     }
@@ -358,7 +359,7 @@ class boss_janalai : public CreatureScript
 
                 if (BombTimer <= diff)
                 {
-                    DoScriptText(SAY_FIRE_BOMBS, me);
+                    Talk(SAY_FIRE_BOMBS);
 
                     me->AttackStop();
                     me->GetMotionMaster()->Clear();
@@ -391,7 +392,7 @@ class boss_janalai : public CreatureScript
                 {
                     if (HealthBelowPct(35))
                     {
-                        DoScriptText(SAY_ALL_EGGS, me);
+                        Talk(SAY_ALL_EGGS);
 
                         me->AttackStop();
                         me->GetMotionMaster()->Clear();
@@ -405,7 +406,7 @@ class boss_janalai : public CreatureScript
                     {
                         if (HatchAllEggs(0))
                         {
-                            DoScriptText(SAY_SUMMON_HATCHER, me);
+                            Talk(SAY_SUMMON_HATCHER);
                             me->SummonCreature(MOB_AMANI_HATCHER, hatcherway[0][0][0], hatcherway[0][0][1], hatcherway[0][0][2], 0, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 10000);
                             me->SummonCreature(MOB_AMANI_HATCHER, hatcherway[1][0][0], hatcherway[1][0][1], hatcherway[1][0][2], 0, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 10000);
                             HatcherTimer = 90000;
@@ -532,7 +533,7 @@ class mob_janalai_hatcher : public CreatureScript
                     cell.Visit(pair, cSearcher, *(me->GetMap()), *me, me->GetGridActivationRange());
                 }
 
-                //sLog->outError("Eggs %d at %d", templist.size(), side);
+                //sLog->outError(LOG_FILTER_TSCR, "Eggs %d at %d", templist.size(), side);
 
                 for (std::list<Creature*>::const_iterator i = templist.begin(); i != templist.end() && num > 0; ++i)
                     if ((*i)->GetDisplayId() != 11686)

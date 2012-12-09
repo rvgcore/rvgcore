@@ -23,10 +23,12 @@ SDComment:
 SDCategory: Scholomance
 EndScriptData */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
 
 enum eEnums
 {
+    EMOTE_FRENZY_KILL            = 0,
     SPELL_FLAMESTRIKE            = 18399,
     SPELL_BLAST_WAVE             = 16046,
     SPELL_FIRESHIELD             = 19626,
@@ -87,7 +89,7 @@ public:
                 if (m_uiFrenzy_Timer <= uiDiff)
                 {
                     DoCast(me, SPELL_FRENZY);
-                    DoScriptText(EMOTE_GENERIC_FRENZY_KILL, me);
+                    Talk(EMOTE_FRENZY_KILL);
 
                     m_uiFrenzy_Timer = 24000;
                 }

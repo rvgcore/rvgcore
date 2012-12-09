@@ -42,11 +42,23 @@ npc_locksmith            75%    list of keys needs to be confirmed
 npc_firework            100%    NPC's summoned by rockets and rocket clusters, for making them cast visual
 EndContentData */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
+#include "ScriptedGossip.h"
 #include "ScriptedEscortAI.h"
 #include "ObjectMgr.h"
 #include "ScriptMgr.h"
 #include "World.h"
+#include "PetAI.h"
+#include "PassiveAI.h"
+#include "CombatAI.h"
+#include "GameEventMgr.h"
+#include "GridNotifiers.h"
+#include "GridNotifiersImpl.h"
+#include "Cell.h"
+#include "CellImpl.h"
+#include "SpellAuras.h"
+#include "Pet.h"
 
 /*########
 # npc_air_force_bots
@@ -130,14 +142,14 @@ public:
             }
 
             if (!SpawnAssoc)
-                sLog->outErrorDb("TCSR: Creature template entry %u has ScriptName npc_air_force_bots, but it's not handled by that script", creature->GetEntry());
+                sLog->outError(LOG_FILTER_SQL, "TCSR: Creature template entry %u has ScriptName npc_air_force_bots, but it's not handled by that script", creature->GetEntry());
             else
             {
                 CreatureTemplate const* spawnedTemplate = sObjectMgr->GetCreatureTemplate(SpawnAssoc->spawnedCreatureEntry);
 
                 if (!spawnedTemplate)
                 {
-                    sLog->outErrorDb("TCSR: Creature template entry %u does not exist in DB, which is required by npc_air_force_bots", SpawnAssoc->spawnedCreatureEntry);
+                    sLog->outError(LOG_FILTER_SQL, "TCSR: Creature template entry %u does not exist in DB, which is required by npc_air_force_bots", SpawnAssoc->spawnedCreatureEntry);
                     SpawnAssoc = NULL;
                     return;
                 }
@@ -157,7 +169,7 @@ public:
                 SpawnedGUID = summoned->GetGUID();
             else
             {
-                sLog->outErrorDb("TCSR: npc_air_force_bots: wasn't able to spawn Creature %u", SpawnAssoc->spawnedCreatureEntry);
+                sLog->outError(LOG_FILTER_SQL, "TCSR: npc_air_force_bots: wasn't able to spawn Creature %u", SpawnAssoc->spawnedCreatureEntry);
                 SpawnAssoc = NULL;
             }
 
@@ -301,12 +313,16 @@ public:
 # npc_chicken_cluck
 #########*/
 
-#define EMOTE_HELLO         -1070004
-#define EMOTE_CLUCK_TEXT    -1070006
+enum ChickenCluck
+{
+    EMOTE_HELLO_A       = 0,
+    EMOTE_HELLO_H       = 1,
+    EMOTE_CLUCK_TEXT    = 2,
 
-#define QUEST_CLUCK         3861
-#define FACTION_FRIENDLY    35
-#define FACTION_CHICKEN     31
+    QUEST_CLUCK         = 3861,
+    FACTION_FRIENDLY    = 35,
+    FACTION_CHICKEN     = 31
+};
 
 class npc_chicken_cluck : public CreatureScript
 {
@@ -355,7 +371,7 @@ public:
                     {
                         me->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER);
                         me->setFaction(FACTION_FRIENDLY);
-                        DoScriptText(EMOTE_HELLO, me);
+                        Talk(player->GetTeam() == HORDE ? EMOTE_HELLO_H : EMOTE_HELLO_A);
                     }
                     break;
                 case TEXT_EMOTE_CHEER:
@@ -363,7 +379,7 @@ public:
                     {
                         me->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER);
                         me->setFaction(FACTION_FRIENDLY);
-                        DoScriptText(EMOTE_CLUCK_TEXT, me);
+                        Talk(EMOTE_CLUCK_TEXT);
                     }
                     break;
             }
@@ -488,15 +504,15 @@ public:
 ## Triage quest
 ######*/
 
-//signed for 9623
-#define SAY_DOC1    -1000201
-#define SAY_DOC2    -1000202
-#define SAY_DOC3    -1000203
+enum Doctor
+{
+    SAY_DOC             = 0,
 
-#define DOCTOR_ALLIANCE     12939
-#define DOCTOR_HORDE        12920
-#define ALLIANCE_COORDS     7
-#define HORDE_COORDS        6
+    DOCTOR_ALLIANCE     = 12939,
+    DOCTOR_HORDE        = 12920,
+    ALLIANCE_COORDS     = 7,
+    HORDE_COORDS        = 6
+};
 
 struct Location
 {
@@ -761,7 +777,7 @@ public:
                 //stand up
                 me->SetUInt32Value(UNIT_FIELD_BYTES_1, UNIT_STAND_STATE_STAND);
 
-                DoScriptText(RAND(SAY_DOC1, SAY_DOC2, SAY_DOC3), me);
+                Talk(SAY_DOC);
 
                 uint32 mobId = me->GetEntry();
                 me->SetWalk(false);
@@ -835,7 +851,7 @@ void npc_doctor::npc_doctorAI::UpdateAI(uint32 const diff)
                     patientEntry = HordeSoldierId[rand() % 3];
                     break;
                 default:
-                    sLog->outError("TSCR: Invalid entry for Triage doctor. Please check your database");
+                    sLog->outError(LOG_FILTER_TSCR, "Invalid entry for Triage doctor. Please check your database");
                     return;
             }
 
@@ -867,7 +883,7 @@ void npc_doctor::npc_doctorAI::UpdateAI(uint32 const diff)
 
 //TODO: get text for each NPC
 
-enum eGarments
+enum Garments
 {
     SPELL_LESSER_HEAL_R2    = 2052,
     SPELL_FORTITUDE_R1      = 1243,
@@ -884,18 +900,10 @@ enum eGarments
     ENTRY_KORJA             = 12430,
     ENTRY_DG_KEL            = 12428,
 
-    //used by 12429, 12423, 12427, 12430, 12428, but signed for 12429
-    SAY_COMMON_HEALED       = -1000164,
-    SAY_DG_KEL_THANKS       = -1000165,
-    SAY_DG_KEL_GOODBYE      = -1000166,
-    SAY_ROBERTS_THANKS      = -1000167,
-    SAY_ROBERTS_GOODBYE     = -1000168,
-    SAY_KORJA_THANKS        = -1000169,
-    SAY_KORJA_GOODBYE       = -1000170,
-    SAY_DOLF_THANKS         = -1000171,
-    SAY_DOLF_GOODBYE        = -1000172,
-    SAY_SHAYA_THANKS        = -1000173,
-    SAY_SHAYA_GOODBYE       = -1000174, //signed for 21469
+    // used by 12429, 12423, 12427, 12430, 12428, but signed for 12429
+    SAY_THANKS              = 0,
+    SAY_GOODBYE             = 1,
+    SAY_HEALED              = 2,
 };
 
 class npc_garments_of_quests : public CreatureScript
@@ -905,7 +913,10 @@ public:
 
     struct npc_garments_of_questsAI : public npc_escortAI
     {
-        npc_garments_of_questsAI(Creature* creature) : npc_escortAI(creature) {Reset();}
+        npc_garments_of_questsAI(Creature* creature) : npc_escortAI(creature) 
+        {
+            Reset();
+        }
 
         uint64 CasterGUID;
 
@@ -924,15 +935,15 @@ public:
             RunAwayTimer = 5000;
 
             me->SetStandState(UNIT_STAND_STATE_KNEEL);
-            //expect database to have RegenHealth=0
+            // expect database to have RegenHealth=0
             me->SetHealth(me->CountPctFromMaxHealth(70));
         }
 
-        void EnterCombat(Unit* /*who*/) {}
+        void EnterCombat(Unit* /*who*/) { }
 
-        void SpellHit(Unit* caster, SpellInfo const* Spell)
+        void SpellHit(Unit* caster, SpellInfo const* spell)
         {
-            if (Spell->Id == SPELL_LESSER_HEAL_R2 || Spell->Id == SPELL_FORTITUDE_R1)
+            if (spell->Id == SPELL_LESSER_HEAL_R2 || spell->Id == SPELL_FORTITUDE_R1)
             {
                 //not while in combat
                 if (me->isInCombat())
@@ -949,16 +960,16 @@ public:
                         case ENTRY_SHAYA:
                             if (player->GetQuestStatus(QUEST_MOON) == QUEST_STATUS_INCOMPLETE)
                             {
-                                if (IsHealed && !CanRun && Spell->Id == SPELL_FORTITUDE_R1)
+                                if (IsHealed && !CanRun && spell->Id == SPELL_FORTITUDE_R1)
                                 {
-                                    DoScriptText(SAY_SHAYA_THANKS, me, caster);
+                                    Talk(SAY_THANKS, caster->GetGUID());
                                     CanRun = true;
                                 }
-                                else if (!IsHealed && Spell->Id == SPELL_LESSER_HEAL_R2)
+                                else if (!IsHealed && spell->Id == SPELL_LESSER_HEAL_R2)
                                 {
                                     CasterGUID = caster->GetGUID();
                                     me->SetStandState(UNIT_STAND_STATE_STAND);
-                                    DoScriptText(SAY_COMMON_HEALED, me, caster);
+                                    Talk(SAY_HEALED, caster->GetGUID());
                                     IsHealed = true;
                                 }
                             }
@@ -966,16 +977,16 @@ public:
                         case ENTRY_ROBERTS:
                             if (player->GetQuestStatus(QUEST_LIGHT_1) == QUEST_STATUS_INCOMPLETE)
                             {
-                                if (IsHealed && !CanRun && Spell->Id == SPELL_FORTITUDE_R1)
+                                if (IsHealed && !CanRun && spell->Id == SPELL_FORTITUDE_R1)
                                 {
-                                    DoScriptText(SAY_ROBERTS_THANKS, me, caster);
+                                    Talk(SAY_THANKS, caster->GetGUID());
                                     CanRun = true;
                                 }
-                                else if (!IsHealed && Spell->Id == SPELL_LESSER_HEAL_R2)
+                                else if (!IsHealed && spell->Id == SPELL_LESSER_HEAL_R2)
                                 {
                                     CasterGUID = caster->GetGUID();
                                     me->SetStandState(UNIT_STAND_STATE_STAND);
-                                    DoScriptText(SAY_COMMON_HEALED, me, caster);
+                                    Talk(SAY_HEALED, caster->GetGUID());
                                     IsHealed = true;
                                 }
                             }
@@ -983,16 +994,16 @@ public:
                         case ENTRY_DOLF:
                             if (player->GetQuestStatus(QUEST_LIGHT_2) == QUEST_STATUS_INCOMPLETE)
                             {
-                                if (IsHealed && !CanRun && Spell->Id == SPELL_FORTITUDE_R1)
+                                if (IsHealed && !CanRun && spell->Id == SPELL_FORTITUDE_R1)
                                 {
-                                    DoScriptText(SAY_DOLF_THANKS, me, caster);
+                                    Talk(SAY_THANKS, caster->GetGUID());
                                     CanRun = true;
                                 }
-                                else if (!IsHealed && Spell->Id == SPELL_LESSER_HEAL_R2)
+                                else if (!IsHealed && spell->Id == SPELL_LESSER_HEAL_R2)
                                 {
                                     CasterGUID = caster->GetGUID();
                                     me->SetStandState(UNIT_STAND_STATE_STAND);
-                                    DoScriptText(SAY_COMMON_HEALED, me, caster);
+                                    Talk(SAY_HEALED, caster->GetGUID());
                                     IsHealed = true;
                                 }
                             }
@@ -1000,16 +1011,16 @@ public:
                         case ENTRY_KORJA:
                             if (player->GetQuestStatus(QUEST_SPIRIT) == QUEST_STATUS_INCOMPLETE)
                             {
-                                if (IsHealed && !CanRun && Spell->Id == SPELL_FORTITUDE_R1)
+                                if (IsHealed && !CanRun && spell->Id == SPELL_FORTITUDE_R1)
                                 {
-                                    DoScriptText(SAY_KORJA_THANKS, me, caster);
+                                    Talk(SAY_THANKS, caster->GetGUID());
                                     CanRun = true;
                                 }
-                                else if (!IsHealed && Spell->Id == SPELL_LESSER_HEAL_R2)
+                                else if (!IsHealed && spell->Id == SPELL_LESSER_HEAL_R2)
                                 {
                                     CasterGUID = caster->GetGUID();
                                     me->SetStandState(UNIT_STAND_STATE_STAND);
-                                    DoScriptText(SAY_COMMON_HEALED, me, caster);
+                                    Talk(SAY_HEALED, caster->GetGUID());
                                     IsHealed = true;
                                 }
                             }
@@ -1017,23 +1028,23 @@ public:
                         case ENTRY_DG_KEL:
                             if (player->GetQuestStatus(QUEST_DARKNESS) == QUEST_STATUS_INCOMPLETE)
                             {
-                                if (IsHealed && !CanRun && Spell->Id == SPELL_FORTITUDE_R1)
+                                if (IsHealed && !CanRun && spell->Id == SPELL_FORTITUDE_R1)
                                 {
-                                    DoScriptText(SAY_DG_KEL_THANKS, me, caster);
+                                    Talk(SAY_THANKS, caster->GetGUID());
                                     CanRun = true;
                                 }
-                                else if (!IsHealed && Spell->Id == SPELL_LESSER_HEAL_R2)
+                                else if (!IsHealed && spell->Id == SPELL_LESSER_HEAL_R2)
                                 {
                                     CasterGUID = caster->GetGUID();
                                     me->SetStandState(UNIT_STAND_STATE_STAND);
-                                    DoScriptText(SAY_COMMON_HEALED, me, caster);
+                                    Talk(SAY_HEALED, caster->GetGUID());
                                     IsHealed = true;
                                 }
                             }
                             break;
                     }
 
-                    //give quest credit, not expect any special quest objectives
+                    // give quest credit, not expect any special quest objectives
                     if (CanRun)
                         player->TalkedToCreature(me->GetEntry(), me->GetGUID());
                 }
@@ -1056,19 +1067,19 @@ public:
                         switch (me->GetEntry())
                         {
                             case ENTRY_SHAYA:
-                                DoScriptText(SAY_SHAYA_GOODBYE, me, unit);
+                                Talk(SAY_GOODBYE, unit->GetGUID());
                                 break;
                             case ENTRY_ROBERTS:
-                                DoScriptText(SAY_ROBERTS_GOODBYE, me, unit);
+                                Talk(SAY_GOODBYE, unit->GetGUID());
                                 break;
                             case ENTRY_DOLF:
-                                DoScriptText(SAY_DOLF_GOODBYE, me, unit);
+                                Talk(SAY_GOODBYE, unit->GetGUID());
                                 break;
                             case ENTRY_KORJA:
-                                DoScriptText(SAY_KORJA_GOODBYE, me, unit);
+                                Talk(SAY_GOODBYE, unit->GetGUID());
                                 break;
                             case ENTRY_DG_KEL:
-                                DoScriptText(SAY_DG_KEL_GOODBYE, me, unit);
+                                Talk(SAY_GOODBYE, unit->GetGUID());
                                 break;
                         }
 
@@ -1257,7 +1268,7 @@ public:
         if (player->GetSpecsCount() == 1 && creature->isCanTrainingAndResetTalentsOf(player) && player->getLevel() >= sWorld->getIntConfig(CONFIG_MIN_DUALSPEC_LEVEL))
             player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TRAINER, GOSSIP_HELLO_ROGUE3, GOSSIP_SENDER_MAIN, GOSSIP_OPTION_LEARNDUALSPEC);
 
-        if (player->getClass() == CLASS_ROGUE && player->getLevel() >= 24 && !player->HasItemCount(17126, 1) && !player->GetQuestRewardStatus(6681))
+        if (player->getClass() == CLASS_ROGUE && player->getLevel() >= 24 && !player->HasItemCount(17126) && !player->GetQuestRewardStatus(6681))
         {
             player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_HELLO_ROGUE2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
             player->SEND_GOSSIP_MENU(5996, creature->GetGUID());
@@ -1943,8 +1954,8 @@ public:
             me->AddUnitMovementFlag(MOVEMENTFLAG_CAN_FLY|MOVEMENTFLAG_ASCENDING|MOVEMENTFLAG_FLYING);
             me->SetSpeed(MOVE_FLIGHT, 0.75f, true);
             me->SetSpeed(MOVE_RUN, 0.75f, true);
-            float x = me->GetPositionX() + 20 * cos(me->GetOrientation());
-            float y = me->GetPositionY() + 20 * sin(me->GetOrientation());
+            float x = me->GetPositionX() + 20 * std::cos(me->GetOrientation());
+            float y = me->GetPositionY() + 20 * std::sin(me->GetOrientation());
             float z = me->GetPositionZ() + 40;
             me->GetMotionMaster()->Clear(false);
             me->GetMotionMaster()->MovePoint(0, x, y, z);
@@ -1975,33 +1986,31 @@ public:
 
 class npc_lightwell : public CreatureScript
 {
-public:
-    npc_lightwell() : CreatureScript("npc_lightwell") { }
+    public:
+        npc_lightwell() : CreatureScript("npc_lightwell") { }
 
-    struct npc_lightwellAI : public PassiveAI
-    {
-        npc_lightwellAI(Creature* creature) : PassiveAI(creature) {}
-
-        void Reset()
+        struct npc_lightwellAI : public PassiveAI
         {
-            DoCast(me, 59907, false); // Spell for Lightwell Charges
-        }
+            npc_lightwellAI(Creature* creature) : PassiveAI(creature)
+            {
+                DoCast(me, 59907, false);
+            }
 
-        void EnterEvadeMode()
+            void EnterEvadeMode()
+            {
+                if (!me->isAlive())
+                    return;
+
+                me->DeleteThreatList();
+                me->CombatStop(true);
+                me->ResetPlayerDamageReq();
+            }
+        };
+
+        CreatureAI* GetAI(Creature* creature) const
         {
-            if (!me->isAlive())
-                return;
-
-            me->DeleteThreatList();
-            me->CombatStop(true);
-            me->ResetPlayerDamageReq();
+            return new npc_lightwellAI(creature);
         }
-    };
-
-    CreatureAI* GetAI(Creature* creature) const
-    {
-        return new npc_lightwellAI(creature);
-    }
 };
 
 enum eTrainingDummy
@@ -2099,34 +2108,26 @@ public:
 
 class npc_shadowfiend : public CreatureScript
 {
-public:
-    npc_shadowfiend() : CreatureScript("npc_shadowfiend") { }
+    public:
+        npc_shadowfiend() : CreatureScript("npc_shadowfiend") { }
 
-    struct npc_shadowfiendAI : public ScriptedAI
-    {
-        npc_shadowfiendAI(Creature* creature) : ScriptedAI(creature) {}
-
-        void DamageTaken(Unit* /*killer*/, uint32& damage)
+        struct npc_shadowfiendAI : public PetAI
         {
-            if (me->isSummon())
-                if (Unit* owner = me->ToTempSummon()->GetSummoner())
-                    if (owner->HasAura(GLYPH_OF_SHADOWFIEND) && damage >= me->GetHealth())
-                        owner->CastSpell(owner, GLYPH_OF_SHADOWFIEND_MANA, true);
-        }
+            npc_shadowfiendAI(Creature* creature) : PetAI(creature) {}
 
-        void UpdateAI(uint32 const /*diff*/)
+            void JustDied(Unit* /*killer*/)
+            {
+                if (me->isSummon())
+                    if (Unit* owner = me->ToTempSummon()->GetSummoner())
+                        if (owner->HasAura(GLYPH_OF_SHADOWFIEND))
+                            owner->CastSpell(owner, GLYPH_OF_SHADOWFIEND_MANA, true);
+            }
+        };
+
+        CreatureAI* GetAI(Creature* creature) const
         {
-            if (!UpdateVictim())
-                return;
-
-            DoMeleeAttackIfReady();
+            return new npc_shadowfiendAI(creature);
         }
-    };
-
-    CreatureAI* GetAI(Creature* creature) const
-    {
-        return new npc_shadowfiendAI(creature);
-    }
 };
 
 /*######
@@ -2193,7 +2194,7 @@ public:
         }
     };
 
-    CreatureAI *GetAI(Creature* creature) const
+    CreatureAI* GetAI(Creature* creature) const
     {
         return new npc_fire_elementalAI(creature);
     }
@@ -2238,7 +2239,7 @@ public:
         }
     };
 
-    CreatureAI *GetAI(Creature* creature) const
+    CreatureAI* GetAI(Creature* creature) const
     {
         return new npc_earth_elementalAI(creature);
     }
@@ -2248,78 +2249,111 @@ public:
 # npc_wormhole
 ######*/
 
-#define GOSSIP_ENGINEERING1   "Borean Tundra."
-#define GOSSIP_ENGINEERING2   "Howling Fjord."
-#define GOSSIP_ENGINEERING3   "Sholazar Basin."
-#define GOSSIP_ENGINEERING4   "Icecrown."
-#define GOSSIP_ENGINEERING5   "Storm Peaks."
+#define GOSSIP_ENGINEERING1   "Borean Tundra"
+#define GOSSIP_ENGINEERING2   "Howling Fjord"
+#define GOSSIP_ENGINEERING3   "Sholazar Basin"
+#define GOSSIP_ENGINEERING4   "Icecrown"
+#define GOSSIP_ENGINEERING5   "Storm Peaks"
+#define GOSSIP_ENGINEERING6   "Underground..."
 
-enum eWormhole
+enum WormholeSpells
 {
-    SPELL_HOWLING_FJORD         = 67838,
+    SPELL_BOREAN_TUNDRA         = 67834,
     SPELL_SHOLAZAR_BASIN        = 67835,
     SPELL_ICECROWN              = 67836,
     SPELL_STORM_PEAKS           = 67837,
+    SPELL_HOWLING_FJORD         = 67838,
+    SPELL_UNDERGROUND           = 68081,
 
-    TEXT_WORMHOLE               = 907
+    TEXT_WORMHOLE               = 907,
+
+    DATA_SHOW_UNDERGROUND       = 1,
 };
 
 class npc_wormhole : public CreatureScript
 {
-public:
-    npc_wormhole() : CreatureScript("npc_wormhole") { }
+    public:
+        npc_wormhole() : CreatureScript("npc_wormhole") {}
 
-    bool OnGossipHello(Player* player, Creature* creature)
-    {
-        if (creature->isSummon())
+        struct npc_wormholeAI : public PassiveAI
         {
-            if (player == creature->ToTempSummon()->GetSummoner())
+            npc_wormholeAI(Creature* creature) : PassiveAI(creature) {}
+
+            void InitializeAI()
             {
-                player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ENGINEERING1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
-                player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ENGINEERING2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
-                player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ENGINEERING3, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
-                player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ENGINEERING4, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 4);
-                player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ENGINEERING5, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 5);
-
-                player->PlayerTalkClass->SendGossipMenu(TEXT_WORMHOLE, creature->GetGUID());
+                _showUnderground = urand(0, 100) == 0; // Guessed value, it is really rare though
             }
-        }
-        return true;
-    }
 
-    bool OnGossipSelect(Player* player, Creature* /*creature*/, uint32 /*sender*/, uint32 action)
-    {
-        player->PlayerTalkClass->ClearMenus();
-        bool roll = urand(0, 1);
+            uint32 GetData(uint32 type) const
+            {
+                return (type == DATA_SHOW_UNDERGROUND && _showUnderground) ? 1 : 0;
+            }
 
-        switch (action)
+        private:
+            bool _showUnderground;
+        };
+
+        bool OnGossipHello(Player* player, Creature* creature)
         {
-            case GOSSIP_ACTION_INFO_DEF + 1: //Borean Tundra
-                player->CLOSE_GOSSIP_MENU();
-                if (roll) //At the moment we don't have chance on spell_target_position table so we hack this
-                    player->TeleportTo(571, 4305.505859f, 5450.839844f, 63.005806f, 0.627286f);
-                else
-                    player->TeleportTo(571, 3201.936279f, 5630.123535f, 133.658798f, 3.855272f);
-                break;
-            case GOSSIP_ACTION_INFO_DEF + 2: //Howling Fjord
-                player->CLOSE_GOSSIP_MENU();
-                player->CastSpell(player, SPELL_HOWLING_FJORD, true);
-                break;
-            case GOSSIP_ACTION_INFO_DEF + 3: //Sholazar Basin
-                player->CLOSE_GOSSIP_MENU();
-                player->CastSpell(player, SPELL_SHOLAZAR_BASIN, true);
-                break;
-            case GOSSIP_ACTION_INFO_DEF + 4: //Icecrown
-                player->CLOSE_GOSSIP_MENU();
-                player->CastSpell(player, SPELL_ICECROWN, true);
-                break;
-            case GOSSIP_ACTION_INFO_DEF + 5: //Storm peaks
-                player->CLOSE_GOSSIP_MENU();
-                player->CastSpell(player, SPELL_STORM_PEAKS, true);
-                break;
+            if (creature->isSummon())
+            {
+                if (player == creature->ToTempSummon()->GetSummoner())
+                {
+                    player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ENGINEERING1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+                    player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ENGINEERING2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
+                    player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ENGINEERING3, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
+                    player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ENGINEERING4, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 4);
+                    player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ENGINEERING5, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 5);
+
+                    if (creature->AI()->GetData(DATA_SHOW_UNDERGROUND))
+                        player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ENGINEERING6, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 6);
+
+                    player->PlayerTalkClass->SendGossipMenu(TEXT_WORMHOLE, creature->GetGUID());
+                }
+            }
+
+            return true;
         }
-        return true;
-    }
+
+        bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action)
+        {
+            player->PlayerTalkClass->ClearMenus();
+
+            switch (action)
+            {
+                case GOSSIP_ACTION_INFO_DEF + 1: // Borean Tundra
+                    player->CLOSE_GOSSIP_MENU();
+                    creature->CastSpell(player, SPELL_BOREAN_TUNDRA, false);
+                    break;
+                case GOSSIP_ACTION_INFO_DEF + 2: // Howling Fjord
+                    player->CLOSE_GOSSIP_MENU();
+                    creature->CastSpell(player, SPELL_HOWLING_FJORD, false);
+                    break;
+                case GOSSIP_ACTION_INFO_DEF + 3: // Sholazar Basin
+                    player->CLOSE_GOSSIP_MENU();
+                    creature->CastSpell(player, SPELL_SHOLAZAR_BASIN, false);
+                    break;
+                case GOSSIP_ACTION_INFO_DEF + 4: // Icecrown
+                    player->CLOSE_GOSSIP_MENU();
+                    creature->CastSpell(player, SPELL_ICECROWN, false);
+                    break;
+                case GOSSIP_ACTION_INFO_DEF + 5: // Storm peaks
+                    player->CLOSE_GOSSIP_MENU();
+                    creature->CastSpell(player, SPELL_STORM_PEAKS, false);
+                    break;
+                case GOSSIP_ACTION_INFO_DEF + 6: // Underground
+                    player->CLOSE_GOSSIP_MENU();
+                    creature->CastSpell(player, SPELL_UNDERGROUND, false);
+                    break;
+            }
+
+            return true;
+        }
+
+        CreatureAI* GetAI(Creature* creature) const
+        {
+            return new npc_wormholeAI(creature);
+        }
 };
 
 /*######
@@ -2865,7 +2899,7 @@ public:
         }
     };
 
-    CreatureAI *GetAI(Creature* creature) const
+    CreatureAI* GetAI(Creature* creature) const
     {
         return new npc_fireworkAI(creature);
     }
@@ -2916,7 +2950,7 @@ public:
                 me->GetMotionMaster()->MoveFollow(owner, PET_FOLLOW_DIST, PET_FOLLOW_ANGLE);
         }
 
-        void EnterCombat(Unit * /*who*/) { }
+        void EnterCombat(Unit* /*who*/) { }
 
         void DoAction(const int32 /*param*/)
         {
@@ -2965,6 +2999,31 @@ public:
     };
 };
 
+/*######
+## npc_generic_harpoon_cannon
+######*/
+
+class npc_generic_harpoon_cannon : public CreatureScript
+{
+public:
+    npc_generic_harpoon_cannon() : CreatureScript("npc_generic_harpoon_cannon") { }
+
+    struct npc_generic_harpoon_cannonAI : public ScriptedAI
+    {
+        npc_generic_harpoon_cannonAI(Creature* creature) : ScriptedAI(creature) {}
+
+        void Reset()
+        {
+            me->SetUnitMovementFlags(MOVEMENTFLAG_ROOT);
+        }
+    };
+
+    CreatureAI* GetAI(Creature* creature) const
+    {
+        return new npc_generic_harpoon_cannonAI(creature);
+    }
+};
+
 void AddSC_npcs_special()
 {
     new npc_air_force_bots();
@@ -2997,4 +3056,5 @@ void AddSC_npcs_special()
     new npc_earth_elemental();
     new npc_firework();
     new npc_spring_rabbit();
+    new npc_generic_harpoon_cannon();
 }

@@ -69,7 +69,7 @@ enum PermissionTypes
     MASTER_PERMISSION           = 2,
     ROUND_ROBIN_PERMISSION      = 3,
     OWNER_PERMISSION            = 4,
-    NONE_PERMISSION             = 5,
+    NONE_PERMISSION             = 5
 };
 
 enum LootType
@@ -94,7 +94,7 @@ enum LootSlotType
     LOOT_SLOT_TYPE_ROLL_ONGOING = 1,                        // roll is ongoing. player cannot loot.
     LOOT_SLOT_TYPE_MASTER       = 2,                        // item can only be distributed by group loot master.
     LOOT_SLOT_TYPE_LOCKED       = 3,                        // item is shown in red. player cannot loot.
-    LOOT_SLOT_TYPE_OWNER        = 4,                        // ignore binding confirmation and etc, for single player looting
+    LOOT_SLOT_TYPE_OWNER        = 4                         // ignore binding confirmation and etc, for single player looting
 };
 
 class Player;
@@ -140,6 +140,7 @@ struct LootItem
     bool    is_underthreshold : 1;
     bool    is_counted        : 1;
     bool    needs_quest       : 1;                          // quest drop
+    bool    follow_loot_rules : 1;
 
     // Constructor, copies most fields from LootStoreItem, generates random count and random suffixes/properties
     // Should be called for non-reference LootStoreItem entries only (mincountOrRef > 0)
@@ -280,6 +281,7 @@ struct Loot
     QuestItemMap const& GetPlayerNonQuestNonFFAConditionalItems() const { return PlayerNonQuestNonFFAConditionalItems; }
 
     std::vector<LootItem> items;
+    std::vector<LootItem> quest_items;
     uint32 gold;
     uint8 unlootedCount;
     uint64 roundRobinPlayer;                                // GUID of the player having the Round-Robin ownership for the loot. If 0, round robin owner has released.
@@ -344,7 +346,6 @@ struct Loot
         QuestItemList* FillQuestLoot(Player* player);
         QuestItemList* FillNonQuestNonFFAConditionalLoot(Player* player, bool presentAtLooting);
 
-        std::vector<LootItem> quest_items;
         std::set<uint64> PlayersLooting;
         QuestItemMap PlayerQuestItems;
         QuestItemMap PlayerFFAItems;

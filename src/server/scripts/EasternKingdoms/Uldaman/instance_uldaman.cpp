@@ -23,7 +23,8 @@ SDComment: Need some cosmetics updates when archeadas door are closing (Guardian
 SDCategory: Uldaman
 EndScriptData */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "InstanceScript.h"
 #include "uldaman.h"
 
 enum eSpells
@@ -201,6 +202,9 @@ class instance_uldaman : public InstanceMapScript
                         continue;
                     archaedas->CastSpell(target, SPELL_AWAKEN_VAULT_WALKER, true);
                     target->CastSpell(target, SPELL_ARCHAEDAS_AWAKEN, true);
+                    target->RemoveFlag(UNIT_FIELD_FLAGS,UNIT_FLAG_DISABLE_MOVE);
+                    target->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+                    target->setFaction(14);
                     return;        // only want the first one we find
                 }
             }
@@ -462,20 +466,27 @@ class instance_uldaman : public InstanceMapScript
                 }
             }
 
-            uint64 GetData64(uint32 identifier)
+            uint64 GetData64(uint32 identifier) const
             {
-                if (identifier == 0) return uiWhoWokeuiArchaedasGUID;
-                if (identifier == 1) return vVaultWalker[0];    // VaultWalker1
-                if (identifier == 2) return vVaultWalker[1];    // VaultWalker2
-                if (identifier == 3) return vVaultWalker[2];    // VaultWalker3
-                if (identifier == 4) return vVaultWalker[3];    // VaultWalker4
-
-                if (identifier == 5) return vEarthenGuardian[0];
-                if (identifier == 6) return vEarthenGuardian[1];
-                if (identifier == 7) return vEarthenGuardian[2];
-                if (identifier == 8) return vEarthenGuardian[3];
-                if (identifier == 9) return vEarthenGuardian[4];
-                if (identifier == 10) return vEarthenGuardian[5];
+                switch (identifier)
+                {
+                    case 0:
+                        return uiWhoWokeuiArchaedasGUID;
+                    case 1:
+                    case 2:
+                    case 3:
+                    case 4:
+                        return vVaultWalker.at(identifier - 1);
+                    case 5:
+                    case 6:
+                    case 7:
+                    case 8:
+                    case 9:
+                    case 10:
+                        return vEarthenGuardian.at(identifier - 5);
+                    default:
+                        break;
+                }
 
                 return 0;
             } // end GetData64

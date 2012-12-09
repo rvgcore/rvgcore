@@ -19,6 +19,7 @@
 #include "MoveSpline.h"
 #include <sstream>
 #include "Log.h"
+#include "Creature.h"
 
 namespace Movement{
 
@@ -50,15 +51,15 @@ Location MoveSpline::ComputePosition() const
         if (splineflags.final_angle)
             c.orientation = facing.angle;
         else if (splineflags.final_point)
-            c.orientation = atan2(facing.f.y-c.y, facing.f.x-c.x);
+            c.orientation = atan2(facing.f.y - c.y, facing.f.x - c.x);
         //nothing to do for MoveSplineFlag::Final_Target flag
     }
     else
     {
-        if (!splineflags.hasFlag(MoveSplineFlag::OrientationFixed|MoveSplineFlag::Falling))
+        if (!splineflags.hasFlag(MoveSplineFlag::OrientationFixed | MoveSplineFlag::Falling))
         {
             Vector3 hermite;
-            spline.evaluate_derivative(point_Idx,u,hermite);
+            spline.evaluate_derivative(point_Idx, u, hermite);
             c.orientation = atan2(hermite.y, hermite.x);
         }
 
@@ -107,7 +108,7 @@ struct FallInitializer
 };
 
 enum{
-    minimal_duration = 1,
+    minimal_duration = 1
 };
 
 struct CommonInitializer
@@ -153,7 +154,7 @@ void MoveSpline::init_spline(const MoveSplineInitArgs& args)
     // TODO: what to do in such cases? problem is in input data (all points are at same coords)
     if (spline.length() < minimal_duration)
     {
-        sLog->outError("MoveSpline::init_spline: zero length spline, wrong input data?");
+        sLog->outError(LOG_FILTER_GENERAL, "MoveSpline::init_spline: zero length spline, wrong input data?");
         spline.set_length(spline.last(), spline.isCyclic() ? 1000 : 1);
     }
     point_Idx = spline.first();
@@ -167,6 +168,7 @@ void MoveSpline::Initialize(const MoveSplineInitArgs& args)
     point_Idx_offset = args.path_Idx_offset;
     initialOrientation = args.initialOrientation;
 
+    onTransport = false;
     time_passed = 0;
     vertical_acceleration = 0.f;
     effect_start_time = 0;
@@ -194,16 +196,16 @@ MoveSpline::MoveSpline() : m_Id(0), time_passed(0),
 
 /// ============================================================================================
 
-bool MoveSplineInitArgs::Validate() const
+bool MoveSplineInitArgs::Validate(Unit* unit) const
 {
 #define CHECK(exp) \
     if (!(exp))\
     {\
-        sLog->outError("MoveSplineInitArgs::Validate: expression '%s' failed", #exp);\
+        sLog->outError(LOG_FILTER_GENERAL, "MoveSplineInitArgs::Validate: expression '%s' failed for GUID: %u Entry: %u", #exp, unit->GetTypeId() == TYPEID_PLAYER ? unit->GetGUIDLow() : unit->ToCreature()->GetDBTableGUIDLow(), unit->GetEntry());\
         return false;\
     }
     CHECK(path.size() > 1);
-    CHECK(velocity > 0.f);
+    CHECK(velocity > 0.1f);
     CHECK(time_perc >= 0.f && time_perc <= 1.f);
     //CHECK(_checkPathBounds());
     return true;
@@ -217,7 +219,7 @@ bool MoveSplineInitArgs::_checkPathBounds() const
     if (!(flags & MoveSplineFlag::Mask_CatmullRom) && path.size() > 2)
     {
         enum{
-            MAX_OFFSET = (1 << 11) / 2,
+            MAX_OFFSET = (1 << 11) / 2
         };
         Vector3 middle = (path.front()+path.back()) / 2;
         Vector3 offset;
@@ -226,7 +228,7 @@ bool MoveSplineInitArgs::_checkPathBounds() const
             offset = path[i] - middle;
             if (fabs(offset.x) >= MAX_OFFSET || fabs(offset.y) >= MAX_OFFSET || fabs(offset.z) >= MAX_OFFSET)
             {
-                sLog->outError("MoveSplineInitArgs::_checkPathBounds check failed");
+                sLog->outError(LOG_FILTER_GENERAL, "MoveSplineInitArgs::_checkPathBounds check failed");
                 return false;
             }
         }

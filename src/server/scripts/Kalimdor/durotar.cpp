@@ -15,8 +15,11 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
 #include "Vehicle.h"
+#include "SpellScript.h"
+#include "Player.h"
 
 /*######
 ##Quest 5441: Lazy Peons
@@ -25,7 +28,7 @@
 
 enum LazyPeonYells
 {
-    SAY_SPELL_HIT                                 = -1000600   //Ow! OK, I''ll get back to work, $N!'
+    SAY_SPELL_HIT                                 = 0
 };
 
 enum LazyPeon
@@ -50,15 +53,15 @@ public:
     {
         npc_lazy_peonAI(Creature* creature) : ScriptedAI(creature) {}
 
-        uint64 uiPlayerGUID;
+        uint64 PlayerGUID;
 
-        uint32 m_uiRebuffTimer;
+        uint32 RebuffTimer;
         bool work;
 
         void Reset()
         {
-            uiPlayerGUID = 0;
-            m_uiRebuffTimer = 0;
+            PlayerGUID = 0;
+            RebuffTimer = 0;
             work = false;
         }
 
@@ -74,24 +77,24 @@ public:
                 && CAST_PLR(caster)->GetQuestStatus(QUEST_LAZY_PEONS) == QUEST_STATUS_INCOMPLETE)
             {
                 caster->ToPlayer()->KilledMonsterCredit(me->GetEntry(), me->GetGUID());
-                DoScriptText(SAY_SPELL_HIT, me, caster);
+                Talk(SAY_SPELL_HIT, caster->GetGUID());
                 me->RemoveAllAuras();
                 if (GameObject* Lumberpile = me->FindNearestGameObject(GO_LUMBERPILE, 20))
                     me->GetMotionMaster()->MovePoint(1, Lumberpile->GetPositionX()-1, Lumberpile->GetPositionY(), Lumberpile->GetPositionZ());
             }
         }
 
-        void UpdateAI(const uint32 uiDiff)
+        void UpdateAI(const uint32 Diff)
         {
             if (work == true)
                 me->HandleEmoteCommand(EMOTE_ONESHOT_WORK_CHOPWOOD);
-            if (m_uiRebuffTimer <= uiDiff)
+            if (RebuffTimer <= Diff)
             {
                 DoCast(me, SPELL_BUFF_SLEEP);
-                m_uiRebuffTimer = 300000;                 //Rebuff agian in 5 minutes
+                RebuffTimer = 300000;                 //Rebuff agian in 5 minutes
             }
             else
-                m_uiRebuffTimer -= uiDiff;
+                RebuffTimer -= Diff;
             if (!UpdateVictim())
                 return;
             DoMeleeAttackIfReady();

@@ -21,6 +21,7 @@
 #include "SpellAuras.h"
 #include "MapManager.h"
 #include "icecrown_citadel.h"
+#include "Player.h"
 
 enum ScriptTexts
 {
@@ -246,7 +247,7 @@ class boss_lord_marrowgar : public CreatureScript
                 return &_coldflameLastPos;
             }
 
-            uint64 GetGUID(int32 type/* = 0 */)
+            uint64 GetGUID(int32 type/* = 0 */) const
             {
                 if (type == DATA_COLDFLAME_GUID)
                     return _coldflameTarget;
@@ -416,7 +417,7 @@ class spell_marrowgar_coldflame : public SpellScriptLoader
         {
             PrepareSpellScript(spell_marrowgar_coldflame_SpellScript);
 
-            void SelectTarget(std::list<Unit*>& targets)
+            void SelectTarget(std::list<WorldObject*>& targets)
             {
                 targets.clear();
                 // select any unit but not the tank (by owners threatlist)
@@ -438,7 +439,7 @@ class spell_marrowgar_coldflame : public SpellScriptLoader
 
             void Register()
             {
-                OnUnitTargetSelect += SpellUnitTargetFn(spell_marrowgar_coldflame_SpellScript::SelectTarget, EFFECT_0, TARGET_UNIT_DEST_AREA_ENEMY);
+                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_marrowgar_coldflame_SpellScript::SelectTarget, EFFECT_0, TARGET_UNIT_DEST_AREA_ENEMY);
                 OnEffectHitTarget += SpellEffectFn(spell_marrowgar_coldflame_SpellScript::HandleScriptEffect, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
             }
         };

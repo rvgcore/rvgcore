@@ -27,7 +27,10 @@ EndScriptData */
 mob_yenniku
 EndContentData */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
+#include "Player.h"
+#include "SpellInfo.h"
 
 /*######
 ## mob_yenniku

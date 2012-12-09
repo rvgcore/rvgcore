@@ -21,6 +21,7 @@
  * Scriptnames of files in this file should be prefixed with "spell_dk_".
  */
 
+#include "Player.h"
 #include "ScriptMgr.h"
 #include "SpellScript.h"
 #include "SpellAuraEffects.h"
@@ -40,6 +41,8 @@ enum DeathKnightSpells
     DK_SPELL_IMPROVED_BLOOD_PRESENCE_TRIGGERED  = 63611,
     DK_SPELL_UNHOLY_PRESENCE                    = 48265,
     DK_SPELL_IMPROVED_UNHOLY_PRESENCE_TRIGGERED = 63622,
+    SPELL_DK_ITEM_T8_MELEE_4P_BONUS             = 64736,
+    DK_SPELL_BLACK_ICE_R1                       = 49140,
 };
 
 // 50462 - Anti-Magic Shell (on raid member)
@@ -68,7 +71,7 @@ class spell_dk_anti_magic_shell_raid : public SpellScriptLoader
 
             void Absorb(AuraEffect* /*aurEff*/, DamageInfo & dmgInfo, uint32 & absorbAmount)
             {
-                 absorbAmount = CalculatePctN(dmgInfo.GetDamage(), absorbPct);
+                 absorbAmount = CalculatePct(dmgInfo.GetDamage(), absorbPct);
             }
 
             void Register()
@@ -111,13 +114,12 @@ class spell_dk_anti_magic_shell_self : public SpellScriptLoader
 
             void CalculateAmount(AuraEffect const* /*aurEff*/, int32 & amount, bool & /*canBeRecalculated*/)
             {
-                // Set absorbtion amount to unlimited
-                amount = -1;
+                amount = GetCaster()->CountPctFromMaxHealth(hpPct);
             }
 
             void Absorb(AuraEffect* /*aurEff*/, DamageInfo & dmgInfo, uint32 & absorbAmount)
             {
-                absorbAmount = std::min(CalculatePctN(dmgInfo.GetDamage(), absorbPct), GetTarget()->CountPctFromMaxHealth(hpPct));
+                absorbAmount = std::min(CalculatePct(dmgInfo.GetDamage(), absorbPct), GetTarget()->CountPctFromMaxHealth(hpPct));
             }
 
             void Trigger(AuraEffect* aurEff, DamageInfo & /*dmgInfo*/, uint32 & absorbAmount)
@@ -178,7 +180,7 @@ class spell_dk_anti_magic_zone : public SpellScriptLoader
 
             void Absorb(AuraEffect* /*aurEff*/, DamageInfo & dmgInfo, uint32 & absorbAmount)
             {
-                 absorbAmount = CalculatePctN(dmgInfo.GetDamage(), absorbPct);
+                 absorbAmount = CalculatePct(dmgInfo.GetDamage(), absorbPct);
             }
 
             void Register()
@@ -334,16 +336,30 @@ class spell_dk_death_pact : public SpellScriptLoader
         {
             PrepareSpellScript(spell_dk_death_pact_SpellScript);
 
-            void FilterTargets(std::list<Unit*>& unitList)
+            SpellCastResult CheckCast()
+            {
+                // Check if we have valid targets, otherwise skip spell casting here
+                if (Player* player = GetCaster()->ToPlayer())
+                    for (Unit::ControlList::const_iterator itr = player->m_Controlled.begin(); itr != player->m_Controlled.end(); ++itr)
+                        if (Creature* undeadPet = (*itr)->ToCreature())
+                            if (undeadPet->isAlive() &&
+                                undeadPet->GetOwnerGUID() == player->GetGUID() &&
+                                undeadPet->GetCreatureType() == CREATURE_TYPE_UNDEAD &&
+                                undeadPet->IsWithinDist(player, 100.0f, false))
+                                return SPELL_CAST_OK;
+
+                return SPELL_FAILED_NO_PET;
+            }
+
+            void FilterTargets(std::list<WorldObject*>& unitList)
             {
                 Unit* unit_to_add = NULL;
-                for (std::list<Unit*>::iterator itr = unitList.begin(); itr != unitList.end(); ++itr)
+                for (std::list<WorldObject*>::iterator itr = unitList.begin(); itr != unitList.end(); ++itr)
                 {
-                    if ((*itr)->GetTypeId() == TYPEID_UNIT
-                        && (*itr)->GetOwnerGUID() == GetCaster()->GetGUID()
-                        && (*itr)->ToCreature()->GetCreatureTemplate()->type == CREATURE_TYPE_UNDEAD)
+                    if (Unit* unit = (*itr)->ToUnit())
+                    if (unit->GetOwnerGUID() == GetCaster()->GetGUID() && unit->GetCreatureType() == CREATURE_TYPE_UNDEAD)
                     {
-                        unit_to_add = (*itr);
+                        unit_to_add = unit;
                         break;
                     }
                 }
@@ -351,18 +367,12 @@ class spell_dk_death_pact : public SpellScriptLoader
                 unitList.clear();
                 if (unit_to_add)
                     unitList.push_back(unit_to_add);
-                else
-                {
-                    // Pet not found - remove cooldown
-                    if (Player* modOwner = GetCaster()->GetSpellModOwner())
-                        modOwner->RemoveSpellCooldown(GetSpellInfo()->Id, true);
-                    FinishCast(SPELL_FAILED_NO_PET);
-                }
             }
 
             void Register()
             {
-                OnUnitTargetSelect += SpellUnitTargetFn(spell_dk_death_pact_SpellScript::FilterTargets, EFFECT_1, TARGET_UNIT_DEST_AREA_ALLY);
+                OnCheckCast += SpellCheckCastFn(spell_dk_death_pact_SpellScript::CheckCast);
+                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_dk_death_pact_SpellScript::FilterTargets, EFFECT_1, TARGET_UNIT_DEST_AREA_ALLY);
             }
         };
 
@@ -381,6 +391,13 @@ class spell_dk_scourge_strike : public SpellScriptLoader
         class spell_dk_scourge_strike_SpellScript : public SpellScript
         {
             PrepareSpellScript(spell_dk_scourge_strike_SpellScript);
+            float multiplier;
+
+            bool Load()
+            {
+                multiplier = 1.0f;
+                return true;
+            }
 
             bool Validate(SpellInfo const* /*spellEntry*/)
             {
@@ -394,7 +411,23 @@ class spell_dk_scourge_strike : public SpellScriptLoader
                 Unit* caster = GetCaster();
                 if (Unit* unitTarget = GetHitUnit())
                 {
-                    int32 bp = CalculatePctN(GetHitDamage(), GetEffectValue() * unitTarget->GetDiseasesByCaster(caster->GetGUID()));
+                    multiplier = (GetEffectValue() * unitTarget->GetDiseasesByCaster(caster->GetGUID()) / 100.f);
+                    // Death Knight T8 Melee 4P Bonus
+                    if (AuraEffect const* aurEff = caster->GetAuraEffect(SPELL_DK_ITEM_T8_MELEE_4P_BONUS, EFFECT_0))
+                        AddPct(multiplier, aurEff->GetAmount());
+                }
+            }
+
+            void HandleAfterHit()
+            {
+                Unit* caster = GetCaster();
+                if (Unit* unitTarget = GetHitUnit())
+                {
+                    int32 bp = GetHitDamage() * multiplier;
+
+                    if (AuraEffect* aurEff = caster->GetAuraEffectOfRankedSpell(DK_SPELL_BLACK_ICE_R1, EFFECT_0))
+                        AddPct(bp, aurEff->GetAmount());
+
                     caster->CastCustomSpell(unitTarget, DK_SPELL_SCOURGE_STRIKE_TRIGGERED, &bp, NULL, NULL, true);
                 }
             }
@@ -402,6 +435,7 @@ class spell_dk_scourge_strike : public SpellScriptLoader
             void Register()
             {
                 OnEffectHitTarget += SpellEffectFn(spell_dk_scourge_strike_SpellScript::HandleDummy, EFFECT_2, SPELL_EFFECT_DUMMY);
+                AfterHit += SpellHitFn(spell_dk_scourge_strike_SpellScript::HandleAfterHit);
             }
         };
 
@@ -439,7 +473,7 @@ class spell_dk_spell_deflection : public SpellScriptLoader
             {
                 // You have a chance equal to your Parry chance
                 if ((dmgInfo.GetDamageType() == SPELL_DIRECT_DAMAGE) && roll_chance_f(GetTarget()->GetUnitParryChance()))
-                    absorbAmount = CalculatePctN(dmgInfo.GetDamage(), absorbPct);
+                    absorbAmount = CalculatePct(dmgInfo.GetDamage(), absorbPct);
             }
 
             void Register()
@@ -549,7 +583,7 @@ class spell_dk_will_of_the_necropolis : public SpellScriptLoader
 
                 // Damage that would take you below [effect0] health or taken while you are at [effect0]
                 if (remainingHp < minHp)
-                    absorbAmount = CalculatePctN(dmgInfo.GetDamage(), absorbPct);
+                    absorbAmount = CalculatePct(dmgInfo.GetDamage(), absorbPct);
             }
 
             void Register()
@@ -588,7 +622,7 @@ public:
             if (!target->HasAura(DK_SPELL_BLOOD_PRESENCE) && !target->HasAura(DK_SPELL_IMPROVED_BLOOD_PRESENCE_TRIGGERED))
             {
                 int32 basePoints1 = aurEff->GetAmount();
-                target->CastCustomSpell(target, 63611, NULL, &basePoints1, NULL, true, 0, aurEff);
+                target->CastCustomSpell(target, DK_SPELL_IMPROVED_BLOOD_PRESENCE_TRIGGERED, NULL, &basePoints1, NULL, true, 0, aurEff);
             }
         }
 
@@ -689,7 +723,7 @@ class spell_dk_death_strike : public SpellScriptLoader
                     int32 bp = int32(count * caster->CountPctFromMaxHealth(int32(GetSpellInfo()->Effects[EFFECT_0].DamageMultiplier)));
                     // Improved Death Strike
                     if (AuraEffect const* aurEff = caster->GetAuraEffect(SPELL_AURA_ADD_PCT_MODIFIER, SPELLFAMILY_DEATHKNIGHT, ICON_ID_IMPROVED_DEATH_STRIKE, 0))
-                        AddPctN(bp, caster->CalculateSpellDamage(caster, aurEff->GetSpellInfo(), 2));
+                        AddPct(bp, caster->CalculateSpellDamage(caster, aurEff->GetSpellInfo(), 2));
                     caster->CastCustomSpell(caster, SPELL_DEATH_STRIKE_HEAL, &bp, NULL, NULL, false);
                 }
             }
@@ -723,14 +757,14 @@ class spell_dk_death_coil : public SpellScriptLoader
         {
             PrepareSpellScript(spell_dk_death_coil_SpellScript);
 
-            bool Validate(SpellInfo const* /*SpellEntry*/)
+            bool Validate(SpellInfo const* /*spell*/)
             {
                 if (!sSpellMgr->GetSpellInfo(SPELL_DEATH_COIL_DAMAGE) || !sSpellMgr->GetSpellInfo(SPELL_DEATH_COIL_HEAL))
                     return false;
                 return true;
             }
 
-            void HandleDummy(SpellEffIndex /* effIndex */)
+            void HandleDummy(SpellEffIndex /*effIndex*/)
             {
                 int32 damage = GetEffectValue();
                 Unit* caster = GetCaster();
@@ -750,8 +784,26 @@ class spell_dk_death_coil : public SpellScriptLoader
                 }
             }
 
+            SpellCastResult CheckCast()
+            {
+                Unit* caster = GetCaster();
+                if (Unit* target = GetExplTargetUnit())
+                {
+                    if (!caster->IsFriendlyTo(target) && !caster->isInFront(target))
+                        return SPELL_FAILED_UNIT_NOT_INFRONT;
+
+                    if (target->IsFriendlyTo(caster) && target->GetCreatureType() != CREATURE_TYPE_UNDEAD)
+                        return SPELL_FAILED_BAD_TARGETS;
+                }
+                else
+                    return SPELL_FAILED_BAD_TARGETS;
+
+                return SPELL_CAST_OK;
+            }
+
             void Register()
             {
+                OnCheckCast += SpellCheckCastFn(spell_dk_death_coil_SpellScript::CheckCast);
                 OnEffectHitTarget += SpellEffectFn(spell_dk_death_coil_SpellScript::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
             }
 

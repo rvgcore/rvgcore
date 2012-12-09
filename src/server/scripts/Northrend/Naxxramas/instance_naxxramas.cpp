@@ -15,7 +15,9 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
+#include "InstanceScript.h"
 #include "naxxramas.h"
 
 const DoorData doorData[] =
@@ -314,7 +316,7 @@ public:
             }
         }
 
-        uint32 GetData(uint32 id)
+        uint32 GetData(uint32 id) const
         {
             switch (id)
             {
@@ -327,7 +329,7 @@ public:
             return 0;
         }
 
-        uint64 GetData64(uint32 id)
+        uint64 GetData64(uint32 id) const
         {
             switch (id)
             {

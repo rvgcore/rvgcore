@@ -23,8 +23,11 @@ SDComment: If thrall escort fail, all parts will reset. In future, save sub-part
 SDCategory: Caverns of Time, Old Hillsbrad Foothills
 EndScriptData */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
+#include "InstanceScript.h"
 #include "old_hillsbrad.h"
+#include "Player.h"
 
 #define MAX_ENCOUNTER      6
 
@@ -83,7 +86,7 @@ public:
                 }
             }
 
-            sLog->outDebug(LOG_FILTER_TSCR, "TSCR: Instance Old Hillsbrad: GetPlayerInMap, but PlayerList is empty!");
+            sLog->outDebug(LOG_FILTER_TSCR, "Instance Old Hillsbrad: GetPlayerInMap, but PlayerList is empty!");
             return NULL;
         }
 
@@ -123,7 +126,7 @@ public:
 
             if (!player)
             {
-                sLog->outDebug(LOG_FILTER_TSCR, "TSCR: Instance Old Hillsbrad: SetData (Type: %u Data %u) cannot find any player.", type, data);
+                sLog->outDebug(LOG_FILTER_TSCR, "Instance Old Hillsbrad: SetData (Type: %u Data %u) cannot find any player.", type, data);
                 return;
             }
 
@@ -139,7 +142,7 @@ public:
                         ++mBarrelCount;
                         DoUpdateWorldState(WORLD_STATE_OH, mBarrelCount);
 
-                        sLog->outDebug(LOG_FILTER_TSCR, "TSCR: Instance Old Hillsbrad: go_barrel_old_hillsbrad count %u", mBarrelCount);
+                        sLog->outDebug(LOG_FILTER_TSCR, "Instance Old Hillsbrad: go_barrel_old_hillsbrad count %u", mBarrelCount);
 
                         m_auiEncounter[0] = IN_PROGRESS;
 
@@ -160,7 +163,7 @@ public:
                         {
                             ++mThrallEventCount;
                             m_auiEncounter[1] = NOT_STARTED;
-                            sLog->outDebug(LOG_FILTER_TSCR, "TSCR: Instance Old Hillsbrad: Thrall event failed %u times. Resetting all sub-events.", mThrallEventCount);
+                            sLog->outDebug(LOG_FILTER_TSCR, "Instance Old Hillsbrad: Thrall event failed %u times. Resetting all sub-events.", mThrallEventCount);
                             m_auiEncounter[2] = NOT_STARTED;
                             m_auiEncounter[3] = NOT_STARTED;
                             m_auiEncounter[4] = NOT_STARTED;
@@ -173,34 +176,34 @@ public:
                             m_auiEncounter[3] = data;
                             m_auiEncounter[4] = data;
                             m_auiEncounter[5] = data;
-                            sLog->outDebug(LOG_FILTER_TSCR, "TSCR: Instance Old Hillsbrad: Thrall event failed %u times. Resetting all sub-events.", mThrallEventCount);
+                            sLog->outDebug(LOG_FILTER_TSCR, "Instance Old Hillsbrad: Thrall event failed %u times. Resetting all sub-events.", mThrallEventCount);
                         }
                     }
                     else
                         m_auiEncounter[1] = data;
-                    sLog->outDebug(LOG_FILTER_TSCR, "TSCR: Instance Old Hillsbrad: Thrall escort event adjusted to data %u.", data);
+                    sLog->outDebug(LOG_FILTER_TSCR, "Instance Old Hillsbrad: Thrall escort event adjusted to data %u.", data);
                     break;
                 }
                 case TYPE_THRALL_PART1:
                     m_auiEncounter[2] = data;
-                    sLog->outDebug(LOG_FILTER_TSCR, "TSCR: Instance Old Hillsbrad: Thrall event part I adjusted to data %u.", data);
+                    sLog->outDebug(LOG_FILTER_TSCR, "Instance Old Hillsbrad: Thrall event part I adjusted to data %u.", data);
                     break;
                 case TYPE_THRALL_PART2:
                     m_auiEncounter[3] = data;
-                    sLog->outDebug(LOG_FILTER_TSCR, "TSCR: Instance Old Hillsbrad: Thrall event part II adjusted to data %u.", data);
+                    sLog->outDebug(LOG_FILTER_TSCR, "Instance Old Hillsbrad: Thrall event part II adjusted to data %u.", data);
                     break;
                 case TYPE_THRALL_PART3:
                     m_auiEncounter[4] = data;
-                    sLog->outDebug(LOG_FILTER_TSCR, "TSCR: Instance Old Hillsbrad: Thrall event part III adjusted to data %u.", data);
+                    sLog->outDebug(LOG_FILTER_TSCR, "Instance Old Hillsbrad: Thrall event part III adjusted to data %u.", data);
                     break;
                 case TYPE_THRALL_PART4:
                     m_auiEncounter[5] = data;
-                     sLog->outDebug(LOG_FILTER_TSCR, "TSCR: Instance Old Hillsbrad: Thrall event part IV adjusted to data %u.", data);
+                     sLog->outDebug(LOG_FILTER_TSCR, "Instance Old Hillsbrad: Thrall event part IV adjusted to data %u.", data);
                     break;
             }
         }
 
-        uint32 GetData(uint32 data)
+        uint32 GetData(uint32 data) const
         {
             switch (data)
             {
@@ -220,7 +223,7 @@ public:
             return 0;
         }
 
-        uint64 GetData64(uint32 data)
+        uint64 GetData64(uint32 data) const
         {
             switch (data)
             {

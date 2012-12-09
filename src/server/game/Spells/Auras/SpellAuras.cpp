@@ -424,8 +424,8 @@ void Aura::_UnapplyForTarget(Unit* target, Unit* caster, AuraApplication * auraA
     // TODO: Figure out why this happens
     if (itr == m_applications.end())
     {
-        sLog->outError("Aura::_UnapplyForTarget, target:%u, caster:%u, spell:%u was not found in owners application map!",
-        target->GetGUIDLow(), caster->GetGUIDLow(), auraApp->GetBase()->GetSpellInfo()->Id);
+        sLog->outError(LOG_FILTER_SPELLS_AURAS, "Aura::_UnapplyForTarget, target:%u, caster:%u, spell:%u was not found in owners application map!",
+        target->GetGUIDLow(), caster ? caster->GetGUIDLow() : 0, auraApp->GetBase()->GetSpellInfo()->Id);
         ASSERT(false);
     }
 
@@ -566,9 +566,9 @@ void Aura::UpdateTargetMap(Unit* caster, bool apply)
             if (!GetOwner()->IsSelfOrInSameMap(itr->first))
             {
                 //TODO: There is a crash caused by shadowfiend load addon
-                sLog->outCrash("Aura %u: Owner %s (map %u) is not in the same map as target %s (map %u).", GetSpellInfo()->Id,
-                    GetOwner()->GetName(), GetOwner()->IsInWorld() ? GetOwner()->GetMap()->GetId() : uint32(-1),
-                    itr->first->GetName(), itr->first->IsInWorld() ? itr->first->GetMap()->GetId() : uint32(-1));
+                sLog->outFatal(LOG_FILTER_SPELLS_AURAS, "Aura %u: Owner %s (map %u) is not in the same map as target %s (map %u).", GetSpellInfo()->Id,
+                    GetOwner()->GetName().c_str(), GetOwner()->IsInWorld() ? GetOwner()->GetMap()->GetId() : uint32(-1),
+                    itr->first->GetName().c_str(), itr->first->IsInWorld() ? itr->first->GetMap()->GetId() : uint32(-1));
                 ASSERT(false);
             }
             itr->first->_CreateAuraApplication(this, itr->second);
@@ -766,7 +766,7 @@ void Aura::SetCharges(uint8 charges)
 
 uint8 Aura::CalcMaxCharges(Unit* caster) const
 {
-    uint8 maxProcCharges = m_spellInfo->ProcCharges;
+    uint32 maxProcCharges = m_spellInfo->ProcCharges;
     if (SpellProcEntry const* procEntry = sSpellMgr->GetSpellProcEntry(GetId()))
         maxProcCharges = procEntry->charges;
 
@@ -1181,7 +1181,7 @@ void Aura::HandleAuraSpecificMods(AuraApplication const* aurApp, Unit* caster, b
                                 case 31571: spellId = 57529; break;
                                 case 31572: spellId = 57531; break;
                                 default:
-                                    sLog->outError("Aura::HandleAuraSpecificMods: Unknown rank of Arcane Potency (%d) found", aurEff->GetId());
+                                    sLog->outError(LOG_FILTER_SPELLS_AURAS, "Aura::HandleAuraSpecificMods: Unknown rank of Arcane Potency (%d) found", aurEff->GetId());
                             }
                             if (spellId)
                                 caster->CastSpell(caster, spellId, true);
@@ -1212,20 +1212,13 @@ void Aura::HandleAuraSpecificMods(AuraApplication const* aurApp, Unit* caster, b
                     // Improved Devouring Plague
                     if (AuraEffect const* aurEff = caster->GetDummyAuraEffect(SPELLFAMILY_PRIEST, 3790, 1))
                     {
-                        int32 basepoints0 = aurEff->GetAmount() * GetEffect(0)->GetTotalTicks() * caster->SpellDamageBonus(target, GetSpellInfo(), GetEffect(0)->GetAmount(), DOT) / 100;
-                        int32 heal = int32(CalculatePctN(basepoints0, 15));
+                        uint32 damage = caster->SpellDamageBonusDone(target, GetSpellInfo(), GetEffect(0)->GetAmount(), DOT);
+                        damage = target->SpellDamageBonusTaken(caster, GetSpellInfo(), damage, DOT);
+                        int32 basepoints0 = aurEff->GetAmount() * GetEffect(0)->GetTotalTicks() * int32(damage) / 100;
+                        int32 heal = int32(CalculatePct(basepoints0, 15));
+
                         caster->CastCustomSpell(target, 63675, &basepoints0, NULL, NULL, true, NULL, GetEffect(0));
                         caster->CastCustomSpell(caster, 75999, &heal, NULL, NULL, true, NULL, GetEffect(0));
-                    }
-                }
-                // Renew
-                else if (GetSpellInfo()->SpellFamilyFlags[0] & 0x00000040 && GetEffect(0))
-                {
-                    // Empowered Renew
-                    if (AuraEffect const* aurEff = caster->GetDummyAuraEffect(SPELLFAMILY_PRIEST, 3021, 1))
-                    {
-                        int32 basepoints0 = aurEff->GetAmount() * GetEffect(0)->GetTotalTicks() * caster->SpellHealingBonus(target, GetSpellInfo(), GetEffect(0)->GetAmount(), HEAL) / 100;
-                        caster->CastCustomSpell(target, 63544, &basepoints0, NULL, NULL, true, NULL, GetEffect(0));
                     }
                 }
                 // Power Word: Shield
@@ -1284,7 +1277,7 @@ void Aura::HandleAuraSpecificMods(AuraApplication const* aurApp, Unit* caster, b
                             case 49631: spellId = 50509; break;
                             case 49032: spellId = 50508; break;
                             default:
-                                sLog->outError("Aura::HandleAuraSpecificMods: Unknown rank of Crypt Fever/Ebon Plague (%d) found", aurEff->GetId());
+                                sLog->outError(LOG_FILTER_SPELLS_AURAS, "Aura::HandleAuraSpecificMods: Unknown rank of Crypt Fever/Ebon Plague (%d) found", aurEff->GetId());
                         }
                         caster->CastSpell(target, spellId, true, 0, GetEffect(0));
                     }
@@ -1380,17 +1373,8 @@ void Aura::HandleAuraSpecificMods(AuraApplication const* aurApp, Unit* caster, b
             case SPELLFAMILY_WARLOCK:
                 if (!caster)
                     break;
-                // Curse of Doom
-                if (GetSpellInfo()->SpellFamilyFlags[1] & 0x02)
-                {
-                    if (removeMode == AURA_REMOVE_BY_DEATH)
-                    {
-                        if (caster->GetTypeId() == TYPEID_PLAYER && caster->ToPlayer()->isHonorOrXPTarget(target))
-                            caster->CastSpell(target, 18662, true, NULL, GetEffect(0));
-                    }
-                }
                 // Improved Fear
-                else if (GetSpellInfo()->SpellFamilyFlags[1] & 0x00000400)
+                if (GetSpellInfo()->SpellFamilyFlags[1] & 0x00000400)
                 {
                     if (AuraEffect* aurEff = caster->GetAuraEffect(SPELL_AURA_DUMMY, SPELLFAMILY_WARLOCK, 98, 0))
                     {
@@ -1400,7 +1384,7 @@ void Aura::HandleAuraSpecificMods(AuraApplication const* aurApp, Unit* caster, b
                             case 53759: spellId = 60947; break;
                             case 53754: spellId = 60946; break;
                             default:
-                                sLog->outError("Aura::HandleAuraSpecificMods: Unknown rank of Improved Fear (%d) found", aurEff->GetId());
+                                sLog->outError(LOG_FILTER_SPELLS_AURAS, "Aura::HandleAuraSpecificMods: Unknown rank of Improved Fear (%d) found", aurEff->GetId());
                         }
                         if (spellId)
                             caster->CastSpell(target, spellId, true);
@@ -1430,10 +1414,16 @@ void Aura::HandleAuraSpecificMods(AuraApplication const* aurApp, Unit* caster, b
                         if (caster->GetTypeId() == TYPEID_PLAYER)
                         {
                             if (caster->ToPlayer()->HasSpellCooldown(aura->GetId()))
-                                break;
-                            // and add if needed
-                            caster->ToPlayer()->AddSpellCooldown(aura->GetId(), 0, uint32(time(NULL) + 12));
+                            {
+                                // This additional check is needed to add a minimal delay before cooldown in in effect
+                                // to allow all bubbles broken by a single damage source proc mana return
+                                if (caster->ToPlayer()->GetSpellCooldownDelay(aura->GetId()) <= 11)
+                                    break;
+                            }
+                            else    // and add if needed
+                                caster->ToPlayer()->AddSpellCooldown(aura->GetId(), 0, uint32(time(NULL) + 12));
                         }
+
                         // effect on caster
                         if (AuraEffect const* aurEff = aura->GetEffect(0))
                         {
@@ -1443,7 +1433,7 @@ void Aura::HandleAuraSpecificMods(AuraApplication const* aurApp, Unit* caster, b
                             else if (aurEff->GetId() == 47537)
                                 multiplier += 0.5f;
 
-                            int32 basepoints0 = int32(CalculatePctF(caster->GetMaxPower(POWER_MANA), multiplier));
+                            int32 basepoints0 = int32(CalculatePct(caster->GetMaxPower(POWER_MANA), multiplier));
                             caster->CastCustomSpell(caster, 47755, &basepoints0, NULL, NULL, true);
                         }
                         // effect on aura target
@@ -1457,7 +1447,7 @@ void Aura::HandleAuraSpecificMods(AuraApplication const* aurApp, Unit* caster, b
                             {
                                 case POWER_MANA:
                                 {
-                                    int32 basepoints0 = int32(CalculatePctN(target->GetMaxPower(POWER_MANA), 2));
+                                    int32 basepoints0 = int32(CalculatePct(target->GetMaxPower(POWER_MANA), 2));
                                     caster->CastCustomSpell(target, 63654, &basepoints0, NULL, NULL, true);
                                     break;
                                 }
@@ -1609,6 +1599,14 @@ void Aura::HandleAuraSpecificMods(AuraApplication const* aurApp, Unit* caster, b
             switch (GetId())
             {
                 case 19746:
+                    // Improved concentration aura - linked aura
+                    if (caster->HasAura(20254) || caster->HasAura(20255) || caster->HasAura(20256))
+                    {
+                        if (apply)
+                            target->CastSpell(target, 63510, true);
+                        else
+                            target->RemoveAura(63510);
+                    }
                 case 31821:
                     // Aura Mastery Triggered Spell Handler
                     // If apply Concentration Aura -> trigger -> apply Aura Mastery Immunity
@@ -1617,6 +1615,7 @@ void Aura::HandleAuraSpecificMods(AuraApplication const* aurApp, Unit* caster, b
                     // Do effects only on aura owner
                     if (GetCasterGUID() != target->GetGUID())
                         break;
+
                     if (apply)
                     {
                         if ((GetSpellInfo()->Id == 31821 && target->HasAura(19746, GetCasterGUID())) || (GetSpellInfo()->Id == 19746 && target->HasAura(31821)))
@@ -1635,6 +1634,29 @@ void Aura::HandleAuraSpecificMods(AuraApplication const* aurApp, Unit* caster, b
                             target->RemoveAurasDueToSpell(71166);
                     }
                     break;
+            }
+            if (GetSpellInfo()->GetSpellSpecific() == SPELL_SPECIFIC_AURA)
+            {
+                if (!caster)
+                    break;
+
+                // Improved devotion aura
+                if (caster->HasAura(20140) || caster->HasAura(20138) || caster->HasAura(20139))
+                {
+                    if (apply)
+                        caster->CastSpell(target, 63514, true);
+                    else
+                        target->RemoveAura(63514);
+                }
+                // 63531 - linked aura for both Sanctified Retribution and Swift Retribution talents
+                // Not allow for Retribution Aura (prevent stacking)
+                if ((GetSpellInfo()->SpellIconID != 555) && (caster->HasAura(53648) || caster->HasAura(53484) || caster->HasAura(53379) || caster->HasAura(31869)))
+                {
+                    if (apply)
+                        caster->CastSpell(target, 63531, true);
+                    else
+                        target->RemoveAura(63531);
+                }
             }
             break;
         case SPELLFAMILY_DEATHKNIGHT:
@@ -2049,6 +2071,7 @@ void Aura::LoadScripts()
         {
             std::list<AuraScript*>::iterator bitr = itr;
             ++itr;
+            delete (*bitr);
             m_loadedScripts.erase(bitr);
             continue;
         }
@@ -2304,6 +2327,21 @@ void Aura::CallScriptEffectAfterManaShieldHandlers(AuraEffect* aurEff, AuraAppli
     }
 }
 
+void Aura::CallScriptEffectSplitHandlers(AuraEffect* aurEff, AuraApplication const* aurApp, DamageInfo & dmgInfo, uint32 & splitAmount)
+{
+    for (std::list<AuraScript*>::iterator scritr = m_loadedScripts.begin(); scritr != m_loadedScripts.end(); ++scritr)
+    {
+        (*scritr)->_PrepareScriptCall(AURA_SCRIPT_HOOK_EFFECT_SPLIT, aurApp);
+        std::list<AuraScript::EffectSplitHandler>::iterator effEndItr = (*scritr)->OnEffectSplit.end(), effItr = (*scritr)->OnEffectSplit.begin();
+        for (; effItr != effEndItr; ++effItr)
+        {
+            if ((*effItr).IsEffectAffected(m_spellInfo, aurEff->GetEffIndex()))
+                (*effItr).Call(*scritr, aurEff, dmgInfo, splitAmount);
+        }
+        (*scritr)->_FinishScriptCall();
+    }
+}
+
 UnitAura::UnitAura(SpellInfo const* spellproto, uint8 effMask, WorldObject* owner, Unit* caster, int32 *baseAmount, Item* castItem, uint64 casterGUID)
     : Aura(spellproto, owner, caster, castItem, casterGUID)
 {
@@ -2311,7 +2349,7 @@ UnitAura::UnitAura(SpellInfo const* spellproto, uint8 effMask, WorldObject* owne
     LoadScripts();
     _InitEffects(effMask, caster, baseAmount);
     GetUnitOwner()->_AddAura(this, caster);
-};
+}
 
 void UnitAura::_ApplyForTarget(Unit* target, Unit* caster, AuraApplication * aurApp)
 {

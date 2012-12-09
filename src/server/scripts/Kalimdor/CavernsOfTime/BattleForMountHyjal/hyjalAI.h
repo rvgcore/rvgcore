@@ -24,43 +24,49 @@
 
 #define HYJAL_AI_MAX_SPELLS 3
 
-// Trash Mobs summoned in waves
-#define NECROMANCER         17899//done
-#define ABOMINATION         17898//done
-#define GHOUL               17895//done
-#define BANSHEE             17905//done
-#define CRYPT_FIEND         17897//done
-#define GARGOYLE            17906//done
-#define FROST_WYRM          17907//done
-#define GIANT_INFERNAL      17908//done
-#define FEL_STALKER         17916//done
+enum CreaturesIds
+{
+    // Trash Mobs summoned in waves
+    NECROMANCER         = 17899,
+    ABOMINATION         = 17898,
+    GHOUL               = 17895,
+    BANSHEE             = 17905,
+    CRYPT_FIEND         = 17897,
+    GARGOYLE            = 17906,
+    FROST_WYRM          = 17907,
+    GIANT_INFERNAL      = 17908,
+    FEL_STALKER         = 17916,
 
-#define JAINA               17772
-#define THRALL              17852
-#define TYRANDE             17948
+    JAINA               = 17772,
+    THRALL              = 17852,
+    TYRANDE             = 17948,
 
-#define ANCIENT_VEIN        185557
-#define FLAMEOBJECT         182592
+    ANCIENT_VEIN        = 185557,
+    FLAMEOBJECT         = 182592,
 
-// Bosses summoned after every 8 waves
-#define RAGE_WINTERCHILL    17767
-#define ANETHERON           17808
-#define KAZROGAL            17888
-#define AZGALOR             17842
-#define ARCHIMONDE          17968
+    // Bosses summoned after every 8 waves
+    RAGE_WINTERCHILL    = 17767,
+    ANETHERON           = 17808,
+    KAZROGAL            = 17888,
+    AZGALOR             = 17842,
+    ARCHIMONDE          = 17968,
+};
 
-#define SPELL_TELEPORT_VISUAL     41232
-#define SPELL_MASS_TELEPORT       16807
+enum SpellIds
+{
+    SPELL_TELEPORT_VISUAL     = 41232,
+    SPELL_MASS_TELEPORT       = 16807,
 
-//Spells for Jaina
-#define SPELL_BRILLIANCE_AURA     31260                     // The database must handle this spell via creature_addon(it should, but is removed in evade..)
-#define SPELL_BLIZZARD            31266
-#define SPELL_PYROBLAST           31263
-#define SPELL_SUMMON_ELEMENTALS   31264
+    //Spells for Jaina
+    SPELL_BRILLIANCE_AURA     = 31260,   // The database must handle this spell via creature_addon(it should, but is removed in evade..)
+    SPELL_BLIZZARD            = 31266,
+    SPELL_PYROBLAST           = 31263,
+    SPELL_SUMMON_ELEMENTALS   = 31264,
 
-//Thrall spells
-#define SPELL_CHAIN_LIGHTNING     31330
-#define SPELL_SUMMON_DIRE_WOLF    31331
+    //Thrall spells
+    SPELL_CHAIN_LIGHTNING     = 31330,
+    SPELL_SUMMON_DIRE_WOLF    = 31331,
+};
 
 struct Wave
 {
@@ -126,12 +132,6 @@ enum TargetType                                             // Used in the spell
     TARGETTYPE_VICTIM   = 2,
 };
 
-struct Yells
-{
-    uint32 id;                                              // Used to determine the type of yell (attack, rally, etc)
-    int32 textid;                                           // The text id to be yelled
-};
-
 enum YellId
 {
     ATTACKED     = 0,                                       // Used when attacked and set in combat
@@ -141,32 +141,6 @@ enum YellId
     FAILURE      = 4,                                       // Used when raid has failed (unsure where to place)
     SUCCESS      = 5,                                       // Used when the raid has sucessfully defeated a wave phase
     DEATH        = 6,                                       // Used on death
-};
-
-const Yells JainaQuotes[]=
-{
-    {ATTACKED, -1534000},
-    {ATTACKED, -1534001},
-    {INCOMING, -1534002},
-    {BEGIN, -1534003},
-    {RALLY, -1534004},
-    {RALLY, -1534005},
-    {FAILURE, -1534006},
-    {SUCCESS, -1534007},
-    {DEATH, -1534008},
-};
-
-const Yells ThrallQuotes[]=
-{
-    {ATTACKED, -1534009},
-    {ATTACKED, -1534010},
-    {INCOMING, -1534011},
-    {BEGIN, -1534012},
-    {RALLY, -1534013},
-    {RALLY, -1534014},
-    {FAILURE, -1534015},
-    {SUCCESS, -1534016},
-    {DEATH, -1534017},
 };
 
 struct hyjalAI : public npc_escortAI
@@ -208,8 +182,6 @@ struct hyjalAI : public npc_escortAI
     void StartEvent(Player* player);                        // Begins the event by gossip click
 
     uint32 GetInstanceData(uint32 Event);                   // Gets instance data for this instance, used to check if raid has gotten past a certain point and can access the next phase
-
-    void Talk(uint32 id);                                   // Searches for the appropriate yell and sound and uses it to inform the raid of various things
 
     public:
         InstanceScript* instance;

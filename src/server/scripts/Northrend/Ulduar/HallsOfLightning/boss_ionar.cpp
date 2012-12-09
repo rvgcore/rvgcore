@@ -20,8 +20,10 @@
  * Comment: Timer check pending
  */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
 #include "halls_of_lightning.h"
+#include "SpellInfo.h"
 
 enum Spells
 {

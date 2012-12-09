@@ -24,7 +24,6 @@
 #include <ace/Atomic_Op.h>
 
 #include "DBCStores.h"
-#include "Player.h"
 #include "SharedDefines.h"
 #include "World.h"
 #include "Weather.h"
@@ -164,7 +163,7 @@ class ScriptObject
     protected:
 
         ScriptObject(const char* name)
-            : _name(std::string(name))
+            : _name(name)
         {
         }
 
@@ -314,7 +313,7 @@ template<class TMap> class MapScript : public UpdatableScript<TMap>
             : _mapEntry(sMapStore.LookupEntry(mapId))
         {
             if (!_mapEntry)
-                sLog->outError("Invalid MapScript for %u; no such map ID.", mapId);
+                sLog->outError(LOG_FILTER_TSCR, "Invalid MapScript for %u; no such map ID.", mapId);
         }
 
     public:
@@ -472,6 +471,12 @@ class GameObjectScript : public ScriptObject, public UpdatableScript<GameObject>
 
         // Called when the game object is damaged (destructible buildings only).
         virtual void OnDamaged(GameObject* /*go*/, Player* /*player*/) { }
+
+        // Called when the game object loot state is changed.
+        virtual void OnLootStateChanged(GameObject* /*go*/, uint32 /*state*/, Unit* /*unit*/) { }
+
+        // Called when the game object state is changed.
+        virtual void OnGameObjectStateChanged(GameObject* /*go*/, uint32 /*state*/) { }
 
         // Called when a GameObjectAI object is needed for the gameobject.
         virtual GameObjectAI* GetAI(GameObject* /*go*/) const { return NULL; }
@@ -914,6 +919,8 @@ class ScriptMgr
         uint32 GetDialogStatus(Player* player, GameObject* go);
         void OnGameObjectDestroyed(GameObject* go, Player* player);
         void OnGameObjectDamaged(GameObject* go, Player* player);
+        void OnGameObjectLootStateChanged(GameObject* go, uint32 state, Unit* unit);
+        void OnGameObjectStateChanged(GameObject* go, uint32 state);
         void OnGameObjectUpdate(GameObject* go, uint32 diff);
         GameObjectAI* GetGameObjectAI(GameObject* go);
 
@@ -972,7 +979,7 @@ class ScriptMgr
 
     public: /* AchievementCriteriaScript */
 
-        bool OnCriteriaCheck(AchievementCriteriaData const* data, Player* source, Unit* target);
+        bool OnCriteriaCheck(uint32 scriptId, Player* source, Unit* target);
 
     public: /* PlayerScript */
 

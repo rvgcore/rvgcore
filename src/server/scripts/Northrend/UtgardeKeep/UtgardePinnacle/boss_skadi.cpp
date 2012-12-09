@@ -25,22 +25,22 @@ SDComment: <Known Bugs>
 SDCategory: Utgarde Pinnacle
 Script Data End */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
 #include "utgarde_pinnacle.h"
+#include "Player.h"
+#include "SpellInfo.h"
 
 //Yell
 enum eYells
 {
-    SAY_AGGRO                           = -1575004,
-    SAY_KILL_1                          = -1575005,
-    SAY_KILL_2                          = -1575006,
-    EMOTE_RANGE                         = -1575007, //Skadi
-    SAY_DEATH                           = -1575008,
-    SAY_DRAKE_DEATH                     = -1575009,
-    EMOTE_BREATH                        = -1575010, //Grauf
-    SAY_DRAKE_BREATH_1                  = -1575011,
-    SAY_DRAKE_BREATH_2                  = -1575012,
-    SAY_DRAKE_BREATH_3                  = -1575013,
+    SAY_AGGRO                           = 0,
+    SAY_KILL                            = 1,
+    EMOTE_RANGE                         = 2,
+    SAY_DEATH                           = 3,
+    SAY_DRAKE_DEATH                     = 4,
+    EMOTE_BREATH                        = 5,
+    SAY_DRAKE_BREATH                    = 6
 };
 
 static Position SpawnLoc = {468.931f, -513.555f, 104.723f, 0};
@@ -171,6 +171,7 @@ public:
         boss_skadiAI(Creature* creature) : ScriptedAI(creature), Summons(me)
         {
             instance = creature->GetInstanceScript();
+            m_uiGraufGUID = 0;
         }
 
         InstanceScript* instance;
@@ -206,7 +207,7 @@ public:
 
             Summons.DespawnAll();
             me->SetSpeed(MOVE_FLIGHT, 3.0f);
-            if ((Unit::GetCreature((*me), m_uiGraufGUID) == NULL) && !me->IsMounted())
+            if ((Unit::GetCreature(*me, m_uiGraufGUID) == NULL) && !me->IsMounted())
                  me->SummonCreature(CREATURE_GRAUF, Location[0].GetPositionX(), Location[0].GetPositionY(), Location[0].GetPositionZ(), 3.0f);
             if (instance)
             {
@@ -220,13 +221,13 @@ public:
             me->SetCanFly(false);
             me->Dismount();
             me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_NON_ATTACKABLE);
-            if (Unit::GetCreature((*me), m_uiGraufGUID) == NULL)
+            if (!Unit::GetCreature(*me, m_uiGraufGUID))
                 me->SummonCreature(CREATURE_GRAUF, Location[0].GetPositionX(), Location[0].GetPositionY(), Location[0].GetPositionZ(), 3.0f);
         }
 
         void EnterCombat(Unit* /*who*/)
         {
-            DoScriptText(SAY_AGGRO, me);
+            Talk(SAY_AGGRO);
 
             me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_NON_ATTACKABLE);
 
@@ -293,7 +294,7 @@ public:
                     }
                     me->GetMotionMaster()->MoveJump(Location[4].GetPositionX(), Location[4].GetPositionY(), Location[4].GetPositionZ(), 5.0f, 10.0f);
                     me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_NON_ATTACKABLE);
-                    DoScriptText(SAY_DRAKE_DEATH, me);
+                    Talk(SAY_DRAKE_DEATH);
                     m_uiCrushTimer = 8000;
                     m_uiPoisonedSpearTimer = 10000;
                     m_uiWhirlwindTimer = 20000;
@@ -315,7 +316,7 @@ public:
                         me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_NON_ATTACKABLE);
                         if (!m_bSaidEmote)
                         {
-                            DoScriptText(EMOTE_RANGE, me);
+                            Talk(EMOTE_RANGE);
                             m_bSaidEmote = true;
                         }
                     }
@@ -356,8 +357,8 @@ public:
                                 break;
                             case 3:
                                 me->GetMotionMaster()->MovePoint(0, Location[69].GetPositionX(), Location[69].GetPositionY(), Location[69].GetPositionZ());
-                                DoScriptText(RAND(SAY_DRAKE_BREATH_1, SAY_DRAKE_BREATH_2), me);
-                                DoScriptText(EMOTE_BREATH, me);
+                                Talk(SAY_DRAKE_BREATH);
+                                Talk(EMOTE_BREATH);
                                 m_uiMovementTimer = 2500;
                                 break;
                             case 4:
@@ -409,7 +410,7 @@ public:
 
         void JustDied(Unit* /*killer*/)
         {
-            DoScriptText(SAY_DEATH, me);
+            Talk(SAY_DEATH);
             Summons.DespawnAll();
             if (instance)
                 instance->SetData(DATA_SKADI_THE_RUTHLESS_EVENT, DONE);
@@ -417,7 +418,7 @@ public:
 
         void KilledUnit(Unit* /*victim*/)
         {
-            DoScriptText(RAND(SAY_KILL_1, SAY_KILL_2), me);
+            Talk(SAY_KILL);
         }
 
         void SpawnMobs()

@@ -16,7 +16,8 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
 #include "nexus.h"
 
 enum Spells
@@ -42,12 +43,11 @@ enum Creatures
 
 enum Yells
 {
-    SAY_AGGRO                                     = -1576000,
-    SAY_KILL                                      = -1576001,
-    SAY_DEATH                                     = -1576002,
-    SAY_MERGE                                     = -1576003,
-    SAY_SPLIT_1                                   = -1576004,
-    SAY_SPLIT_2                                   = -1576005,
+    SAY_AGGRO                                     = 0,
+    SAY_KILL                                      = 1,
+    SAY_DEATH                                     = 2,
+    SAY_MERGE                                     = 3,
+    SAY_SPLIT                                     = 4
 };
 
 #define ACTION_MAGUS_DEAD                         1
@@ -121,7 +121,7 @@ public:
 
         void EnterCombat(Unit* /*who*/)
         {
-            DoScriptText(SAY_AGGRO, me);
+            Talk(SAY_AGGRO);
 
             if (instance)
                 instance->SetData(DATA_MAGUS_TELESTRA_EVENT, IN_PROGRESS);
@@ -129,7 +129,7 @@ public:
 
         void JustDied(Unit* /*killer*/)
         {
-            DoScriptText(SAY_DEATH, me);
+            Talk(SAY_DEATH);
 
             if (instance)
                 instance->SetData(DATA_MAGUS_TELESTRA_EVENT, DONE);
@@ -137,7 +137,7 @@ public:
 
         void KilledUnit(Unit* /*victim*/)
         {
-            DoScriptText(SAY_KILL, me);
+            Talk(SAY_KILL);
         }
 
         void DoAction(int32 const action)
@@ -154,7 +154,7 @@ public:
             }
         }
 
-        uint32 GetData(uint32 type)
+        uint32 GetData(uint32 type) const
         {
             if (type == DATA_SPLIT_PERSONALITY)
                 return splitPersonality;
@@ -250,7 +250,7 @@ public:
                     uiArcaneMagusGUID = 0;
                     bIsWaitingToAppear = true;
                     uiIsWaitingToAppearTimer = 4*IN_MILLISECONDS;
-                    DoScriptText(SAY_MERGE, me);
+                    Talk(SAY_MERGE);
                 }
                 else
                     return;
@@ -269,7 +269,7 @@ public:
                 bFireMagusDead = false;
                 bFrostMagusDead = false;
                 bArcaneMagusDead = false;
-                DoScriptText(RAND(SAY_SPLIT_1, SAY_SPLIT_2), me);
+                Talk(SAY_SPLIT);
                 return;
             }
 
@@ -286,7 +286,7 @@ public:
                 bFireMagusDead = false;
                 bFrostMagusDead = false;
                 bArcaneMagusDead = false;
-                DoScriptText(RAND(SAY_SPLIT_1, SAY_SPLIT_2), me);
+                Talk(SAY_SPLIT);
                 return;
             }
 

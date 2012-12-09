@@ -15,7 +15,8 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
 #include "ruins_of_ahnqiraj.h"
 
 enum Texts
@@ -57,7 +58,7 @@ class boss_moam : public CreatureScript
 
         struct boss_moamAI : public BossAI
         {
-            boss_moamAI(Creature* creature) : BossAI(creature, BOSS_MOAM)
+            boss_moamAI(Creature* creature) : BossAI(creature, DATA_MOAM)
             {
             }
 

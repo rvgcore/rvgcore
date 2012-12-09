@@ -15,8 +15,11 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
+#include "InstanceScript.h"
 #include "halls_of_reflection.h"
+#include "Player.h"
 
 #define MAX_ENCOUNTER 3
 
@@ -242,7 +245,7 @@ public:
                 SaveToDB();
         }
 
-        uint32 GetData(uint32 type)
+        uint32 GetData(uint32 type) const
         {
             switch (type)
             {
@@ -256,7 +259,7 @@ public:
             return 0;
         }
 
-        uint64 GetData64(uint32 identifier)
+        uint64 GetData64(uint32 identifier) const
         {
             switch (identifier)
             {

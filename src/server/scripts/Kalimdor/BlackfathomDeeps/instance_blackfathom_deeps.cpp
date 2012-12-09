@@ -23,7 +23,8 @@ SDComment:
 SDCategory: Blackfathom Deeps
 EndScriptData */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "InstanceScript.h"
 #include "blackfathom_deeps.h"
 
 #define MAX_ENCOUNTER 4
@@ -211,7 +212,7 @@ public:
             }
         }
 
-        uint32 GetData(uint32 type)
+        uint32 GetData(uint32 type) const
         {
             switch (type)
             {
@@ -232,7 +233,7 @@ public:
             return 0;
         }
 
-        uint64 GetData64(uint32 data)
+        uint64 GetData64(uint32 data) const
         {
             switch (data)
             {

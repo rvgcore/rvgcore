@@ -23,22 +23,24 @@ SDComment:
 SDCategory: Karazhan
 EndScriptData */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
 #include "karazhan.h"
 
-#define SAY_AGGRO           -1532011
-#define SAY_SPECIAL_1       -1532012
-#define SAY_SPECIAL_2       -1532013
-#define SAY_KILL_1          -1532014
-#define SAY_KILL_2          -1532015
-#define SAY_KILL_3          -1532016
-#define SAY_DEATH           -1532017
+enum Moroes
+{
+    SAY_AGGRO           = 0,
+    SAY_SPECIAL         = 1,
+    SAY_KILL            = 2,
+    SAY_DEATH           = 3,
 
-#define SPELL_VANISH        29448
-#define SPELL_GARROTE       37066
-#define SPELL_BLIND         34694
-#define SPELL_GOUGE         29425
-#define SPELL_FRENZY        37023
+    SPELL_VANISH        = 29448,
+    SPELL_GARROTE       = 37066,
+    SPELL_BLIND         = 34694,
+    SPELL_GOUGE         = 29425,
+    SPELL_FRENZY        = 37023,
+};
+
 
 #define POS_Z               81.73f
 
@@ -74,8 +76,8 @@ public:
     {
         boss_moroesAI(Creature* creature) : ScriptedAI(creature)
         {
-            for (uint8 i = 0; i < 4; ++i)
-                AddId[i] = 0;
+            memset(AddId, 0, sizeof(AddId));
+            memset(AddGUID, 0, sizeof(AddGUID));
 
             instance = creature->GetInstanceScript();
         }
@@ -104,10 +106,8 @@ public:
 
             Enrage = false;
             InVanish = false;
-            if (me->GetHealth() > 0)
-            {
+            if (me->GetHealth())
                 SpawnAdds();
-            }
 
             if (instance)
                 instance->SetData(TYPE_MOROES, NOT_STARTED);
@@ -125,19 +125,19 @@ public:
         {
             StartEvent();
 
-            DoScriptText(SAY_AGGRO, me);
+            Talk(SAY_AGGRO);
             AddsAttack();
             DoZoneInCombat();
         }
 
         void KilledUnit(Unit* /*victim*/)
         {
-            DoScriptText(RAND(SAY_KILL_1, SAY_KILL_2, SAY_KILL_3), me);
+            Talk(SAY_KILL);
         }
 
         void JustDied(Unit* /*killer*/)
         {
-            DoScriptText(SAY_DEATH, me);
+            Talk(SAY_DEATH);
 
             if (instance)
                 instance->SetData(TYPE_MOROES, DONE);
@@ -192,10 +192,9 @@ public:
         bool isAddlistEmpty()
         {
             for (uint8 i = 0; i < 4; ++i)
-            {
                 if (AddId[i] == 0)
                     return true;
-            }
+
             return false;
         }
 
@@ -203,12 +202,11 @@ public:
         {
             for (uint8 i = 0; i < 4; ++i)
             {
-                Creature* Temp = NULL;
                 if (AddGUID[i])
                 {
-                    Temp = Creature::GetCreature((*me), AddGUID[i]);
-                    if (Temp && Temp->isAlive())
-                        Temp->DisappearAndDie();
+                    Creature* temp = Creature::GetCreature((*me), AddGUID[i]);
+                    if (temp && temp->isAlive())
+                        temp->DisappearAndDie();
                 }
             }
         }
@@ -217,14 +215,13 @@ public:
         {
             for (uint8 i = 0; i < 4; ++i)
             {
-                Creature* Temp = NULL;
                 if (AddGUID[i])
                 {
-                    Temp = Creature::GetCreature((*me), AddGUID[i]);
-                    if (Temp && Temp->isAlive())
+                    Creature* temp = Creature::GetCreature((*me), AddGUID[i]);
+                    if (temp && temp->isAlive())
                     {
-                        Temp->AI()->AttackStart(me->getVictim());
-                        DoZoneInCombat(Temp);
+                        temp->AI()->AttackStart(me->getVictim());
+                        DoZoneInCombat(temp);
                     } else
                         EnterEvadeMode();
                 }
@@ -252,13 +249,12 @@ public:
             {
                 for (uint8 i = 0; i < 4; ++i)
                 {
-                    Creature* Temp = NULL;
                     if (AddGUID[i])
                     {
-                        Temp = Unit::GetCreature((*me), AddGUID[i]);
-                        if (Temp && Temp->isAlive())
-                            if (!Temp->getVictim())
-                                Temp->AI()->AttackStart(me->getVictim());
+                        Creature* temp = Unit::GetCreature((*me), AddGUID[i]);
+                        if (temp && temp->isAlive())
+                            if (!temp->getVictim())
+                                temp->AI()->AttackStart(me->getVictim());
                     }
                 }
                 CheckAdds_Timer = 5000;
@@ -299,7 +295,7 @@ public:
             {
                 if (Wait_Timer <= diff)
                 {
-                    DoScriptText(RAND(SAY_SPECIAL_1, SAY_SPECIAL_2), me);
+                    Talk(SAY_SPECIAL);
 
                     if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 100, true))
                         target->CastSpell(target, SPELL_GARROTE, true);
@@ -312,7 +308,6 @@ public:
                 DoMeleeAttackIfReady();
         }
     };
-
 };
 
 struct boss_moroes_guestAI : public ScriptedAI
@@ -340,17 +335,10 @@ struct boss_moroes_guestAI : public ScriptedAI
         if (!instance)
             return;
 
-        uint64 MoroesGUID = instance->GetData64(DATA_MOROES);
-        Creature* Moroes = (Unit::GetCreature((*me), MoroesGUID));
-        if (Moroes)
-        {
+        if (Creature* Moroes = Unit::GetCreature(*me, instance->GetData64(DATA_MOROES)))
             for (uint8 i = 0; i < 4; ++i)
-            {
-                uint64 GUID = CAST_AI(boss_moroes::boss_moroesAI, Moroes->AI())->AddGUID[i];
-                if (GUID)
+                if (uint64 GUID = CAST_AI(boss_moroes::boss_moroesAI, Moroes->AI())->AddGUID[i])
                     GuestGUID[i] = GUID;
-            }
-        }
     }
 
     Unit* SelectGuestTarget()
@@ -464,7 +452,6 @@ public:
             } else ShadowWordPain_Timer -= diff;
         }
     };
-
 };
 
 class boss_baron_rafe_dreuger : public CreatureScript
@@ -522,7 +509,6 @@ public:
             } else HammerOfJustice_Timer -= diff;
         }
     };
-
 };
 
 class boss_lady_catriona_von_indi : public CreatureScript
@@ -593,7 +579,6 @@ public:
             } else DispelMagic_Timer -= diff;
         }
     };
-
 };
 
 class boss_lady_keira_berrybuck : public CreatureScript
@@ -668,7 +653,6 @@ public:
             } else Cleanse_Timer -= diff;
         }
     };
-
 };
 
 class boss_lord_robin_daris : public CreatureScript
@@ -725,7 +709,6 @@ public:
             } else WhirlWind_Timer -= diff;
         }
     };
-
 };
 
 class boss_lord_crispin_ference : public CreatureScript
@@ -790,7 +773,6 @@ public:
             } else ShieldWall_Timer -= diff;
         }
     };
-
 };
 
 void AddSC_boss_moroes()

@@ -45,7 +45,7 @@ enum SelectTargetType
 
     SELECT_TARGET_SINGLE_FRIEND,                            //Only Single Friend
     SELECT_TARGET_AOE_FRIEND,                               //Only AoE Friend
-    SELECT_TARGET_ANY_FRIEND,                               //AoE or Single Friend
+    SELECT_TARGET_ANY_FRIEND                                //AoE or Single Friend
 };
 
 //Spell Effects used by SelectSpell
@@ -54,7 +54,7 @@ enum SelectEffect
     SELECT_EFFECT_DONTCARE = 0,                             //All spell effects allowed
     SELECT_EFFECT_DAMAGE,                                   //Spell does damage
     SELECT_EFFECT_HEALING,                                  //Spell does healing
-    SELECT_EFFECT_AURA,                                     //Spell applies an aura
+    SELECT_EFFECT_AURA                                      //Spell applies an aura
 };
 
 enum SCEquip
@@ -117,7 +117,7 @@ class CreatureAI : public UnitAI
         virtual void SpellHitTarget(Unit* /*target*/, SpellInfo const* /*spell*/) {}
 
         // Called when the creature is target of hostile action: swing, hostile spell landed, fear/etc)
-        //virtual void AttackedBy(Unit* attacker);
+        virtual void AttackedBy(Unit* /*attacker*/) {}
         virtual bool IsEscorted() { return false; }
 
         // Called when creature is spawned or respawned (for reseting variables)
@@ -128,8 +128,6 @@ class CreatureAI : public UnitAI
 
         void OnCharmed(bool apply);
 
-        //virtual void SpellClick(Player* player) {}
-
         // Called at reaching home after evade
         virtual void JustReachedHome() {}
 
@@ -139,7 +137,7 @@ class CreatureAI : public UnitAI
         virtual void ReceiveEmote(Player* /*player*/, uint32 /*emoteId*/) {}
 
         // Called when owner takes damage
-        virtual void OwnerDamagedBy(Unit* /*attacker*/) {}
+        virtual void OwnerAttackedBy(Unit* /*attacker*/) {}
 
         // Called when owner attacks something
         virtual void OwnerAttacked(Unit* /*target*/) {}
@@ -170,6 +168,8 @@ class CreatureAI : public UnitAI
         //Creature* const me;
 
         virtual void PassengerBoarded(Unit* /*passenger*/, int8 /*seatId*/, bool /*apply*/) {}
+
+        virtual void OnSpellClick(Unit* /*clicker*/) { }
 
         virtual bool CanSeeAlways(WorldObject const* /*obj*/) { return false; }
     protected:

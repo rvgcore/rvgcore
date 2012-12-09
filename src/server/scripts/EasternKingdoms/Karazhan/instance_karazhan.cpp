@@ -23,7 +23,8 @@ SDComment: Instance Script for Karazhan to help in various encounters. TODO: Gam
 SDCategory: Karazhan
 EndScriptData */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "InstanceScript.h"
 #include "karazhan.h"
 
 #define MAX_ENCOUNTER      12
@@ -240,7 +241,7 @@ public:
             return strSaveData;
         }
 
-        uint32 GetData(uint32 uiData)
+        uint32 GetData(uint32 uiData) const
         {
             switch (uiData)
             {
@@ -263,7 +264,7 @@ public:
             return 0;
         }
 
-        uint64 GetData64(uint32 uiData)
+        uint64 GetData64(uint32 uiData) const
         {
             switch (uiData)
             {
@@ -287,7 +288,7 @@ public:
             return 0;
         }
 
-        void Load(const char* chrIn)
+        void Load(char const* chrIn)
         {
             if (!chrIn)
             {
@@ -307,7 +308,6 @@ public:
             OUT_LOAD_INST_DATA_COMPLETE;
         }
     };
-
 };
 
 void AddSC_instance_karazhan()

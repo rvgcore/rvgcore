@@ -23,8 +23,10 @@ SDComment: Darkglare tracking issue
 SDCategory: Temple of Ahn'Qiraj
 EndScriptData */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
 #include "temple_of_ahnqiraj.h"
+#include "Player.h"
 
 /*
  * This is a 2 phases events. Here follows an explanation of the main events and transition between phases and sub-phases.
@@ -140,7 +142,7 @@ enum Actions
 enum Yells
 {
     //Text emote
-    EMOTE_WEAKENED                              = -1531011,
+    EMOTE_WEAKENED                              = 0,
 
     // ****** Out of Combat ******
     // Random Wispers - No txt only sound
@@ -180,7 +182,7 @@ public:
         {
             instance = creature->GetInstanceScript();
             if (!instance)
-                sLog->outError("TSCR: No Instance eye_of_cthunAI");
+                sLog->outError(LOG_FILTER_TSCR, "No Instance eye_of_cthunAI");
         }
 
         InstanceScript* instance;
@@ -486,7 +488,7 @@ public:
 
             instance = creature->GetInstanceScript();
             if (!instance)
-                sLog->outError("TSCR: No Instance eye_of_cthunAI");
+                sLog->outError(LOG_FILTER_TSCR, "No Instance eye_of_cthunAI");
         }
 
         InstanceScript* instance;
@@ -710,7 +712,7 @@ public:
                     {
                         instance->SetData(DATA_CTHUN_PHASE, PHASE_CTHUN_WEAK);
 
-                        DoScriptText(EMOTE_WEAKENED, me);
+                        Talk(EMOTE_WEAKENED);
                         PhaseTimer = 45000;
 
                         DoCast(me, SPELL_PURPLE_COLORATION, true);

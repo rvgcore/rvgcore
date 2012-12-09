@@ -26,20 +26,19 @@ EndScriptData */
 #include "ScriptMgr.h"
 #include "ScriptedCreature.h"
 #include "SpellScript.h"
+#include "SpellAuraEffects.h"
 
 #include "the_eye.h"
 
 enum eEnums
 {
-    SAY_AGGRO                           = -1550007,
-    SAY_SUMMON1                         = -1550008,
-    SAY_SUMMON2                         = -1550009,
-    SAY_KILL1                           = -1550010,
-    SAY_KILL2                           = -1550011,
-    SAY_KILL3                           = -1550012,
-    SAY_DEATH                           = -1550013,
-    SAY_VOIDA                           = -1550014,
-    SAY_VOIDB                           = -1550015,
+    SAY_AGGRO                           = 0,
+    SAY_SUMMON1                         = 1,
+    SAY_SUMMON2                         = 2,
+    SAY_KILL                            = 3,
+    SAY_DEATH                           = 4,
+    SAY_VOIDA                           = 5,
+    SAY_VOIDB                           = 6,
 
     SPELL_ARCANE_MISSILES               = 33031,
     SPELL_WRATH_OF_THE_ASTROMANCER      = 42783,
@@ -140,7 +139,7 @@ class boss_high_astromancer_solarian : public CreatureScript
                 me->SetArmor(defaultarmor);
                 me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
                 me->SetVisible(true);
-                me->SetFloatValue(OBJECT_FIELD_SCALE_X, defaultsize);
+                me->SetObjectScale(defaultsize);
                 me->SetDisplayId(MODEL_HUMAN);
 
                 Summons.DespawnAll();
@@ -148,21 +147,21 @@ class boss_high_astromancer_solarian : public CreatureScript
 
             void KilledUnit(Unit* /*victim*/)
             {
-                DoScriptText(RAND(SAY_KILL1, SAY_KILL2, SAY_KILL3), me);
+                Talk(SAY_KILL);
             }
 
             void JustDied(Unit* /*killer*/)
             {
-                me->SetFloatValue(OBJECT_FIELD_SCALE_X, defaultsize);
+                me->SetObjectScale(defaultsize);
                 me->SetDisplayId(MODEL_HUMAN);
-                DoScriptText(SAY_DEATH, me);
+                Talk(SAY_DEATH);
                 if (instance)
                     instance->SetData(DATA_HIGHASTROMANCERSOLARIANEVENT, DONE);
             }
 
             void EnterCombat(Unit* /*who*/)
             {
-                DoScriptText(SAY_AGGRO, me);
+                Talk(SAY_AGGRO);
                 DoZoneInCombat();
 
                 if (instance)
@@ -332,7 +331,7 @@ class boss_high_astromancer_solarian : public CreatureScript
                                 for (int j=1; j <= 4; j++)
                                     SummonMinion(NPC_SOLARIUM_AGENT, Portals[i][0], Portals[i][1], Portals[i][2]);
 
-                            DoScriptText(SAY_SUMMON1, me);
+                            Talk(SAY_SUMMON1);
                             Phase2_Timer = 10000;
                         }
                         else
@@ -359,7 +358,7 @@ class boss_high_astromancer_solarian : public CreatureScript
                                 me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
                                 me->SetVisible(true);
 
-                                DoScriptText(SAY_SUMMON2, me);
+                                Talk(SAY_SUMMON2);
                                 AppearDelay = true;
                                 Phase3_Timer = 15000;
                             }
@@ -393,11 +392,11 @@ class boss_high_astromancer_solarian : public CreatureScript
                                 //To make sure she wont be invisible or not selecatble
                                 me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
                                 me->SetVisible(true);
-                                DoScriptText(SAY_VOIDA, me);
-                                DoScriptText(SAY_VOIDB, me);
+                                Talk(SAY_VOIDA);
+                                Talk(SAY_VOIDB);
                                 me->SetArmor(WV_ARMOR);
                                 me->SetDisplayId(MODEL_VOIDWALKER);
-                                me->SetFloatValue(OBJECT_FIELD_SCALE_X, defaultsize*2.5f);
+                                me->SetObjectScale(defaultsize*2.5f);
                             }
                 DoMeleeAttackIfReady();
             }
@@ -501,9 +500,9 @@ class spell_astromancer_wrath_of_the_astromancer : public SpellScriptLoader
     public:
         spell_astromancer_wrath_of_the_astromancer() : SpellScriptLoader("spell_astromancer_wrath_of_the_astromancer") { }
 
-        class spell_astromancer_wrath_of_the_astromancer_SpellScript : public SpellScript
+        class spell_astromancer_wrath_of_the_astromancer_AuraScript : public AuraScript
         {
-            PrepareSpellScript(spell_astromancer_wrath_of_the_astromancer_SpellScript);
+            PrepareAuraScript(spell_astromancer_wrath_of_the_astromancer_AuraScript);
 
             bool Validate(SpellInfo const* /*SpellEntry*/)
             {
@@ -512,50 +511,25 @@ class spell_astromancer_wrath_of_the_astromancer : public SpellScriptLoader
                 return true;
             }
 
-            bool Load()
+            void AfterRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
             {
-                _targetCount = 0;
-                return true;
+                // Final heal only on duration end
+                if (GetTargetApplication()->GetRemoveMode() != AURA_REMOVE_BY_EXPIRE)
+                    return;
+
+                Unit* target = GetUnitOwner();
+                target->CastSpell(target, GetSpellInfo()->Effects[EFFECT_1].CalcValue(),false);
             }
-
-            void CountTargets(std::list<Unit*>& targetList)
-            {
-                _targetCount = targetList.size();
-            }
-
-            void HandleDummy(SpellEffIndex /* effIndex */)
-            {
-                if (Unit* caster = GetOriginalCaster())
-                    if (Unit* target = GetHitUnit())
-                    {
-                        if (!target->isAlive() || !_targetCount)
-                            return;
-
-                        int32 damage = 10000 / _targetCount;
-
-                        SpellNonMeleeDamage damageInfo(caster, target, GetSpellInfo()->Id, GetSpellInfo()->SchoolMask);
-                        damageInfo.damage = damage;
-
-                        caster->CalcAbsorbResist(target, GetSpellInfo()->GetSchoolMask(), DOT, damage, &damageInfo.absorb, &damageInfo.resist, GetSpellInfo());
-                        caster->DealDamageMods(target, damageInfo.damage, &damageInfo.absorb);
-                        caster->SendSpellNonMeleeDamageLog(&damageInfo);
-                        caster->DealSpellDamage(&damageInfo, false);
-                    }
-            }
-
-        private:
-            int32 _targetCount;
 
             void Register()
             {
-                OnEffectHitTarget += SpellEffectFn(spell_astromancer_wrath_of_the_astromancer_SpellScript::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
-                OnUnitTargetSelect += SpellUnitTargetFn(spell_astromancer_wrath_of_the_astromancer_SpellScript::CountTargets, EFFECT_0, TARGET_DEST_CASTER_RADIUS);
+                AfterEffectRemove += AuraEffectRemoveFn(spell_astromancer_wrath_of_the_astromancer_AuraScript::AfterRemove, EFFECT_0, SPELL_AURA_PERIODIC_TRIGGER_SPELL, AURA_EFFECT_HANDLE_REAL);
             }
         };
 
-        SpellScript* GetSpellScript() const
+        AuraScript* GetAuraScript() const
         {
-            return new spell_astromancer_wrath_of_the_astromancer_SpellScript();
+            return new spell_astromancer_wrath_of_the_astromancer_AuraScript();
         }
 };
 

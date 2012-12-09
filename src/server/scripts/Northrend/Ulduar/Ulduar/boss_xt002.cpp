@@ -29,6 +29,9 @@
 #include "SpellAuraEffects.h"
 #include "ulduar.h"
 #include "Vehicle.h"
+#include "Player.h"
+#include "WorldPacket.h"
+#include "Opcodes.h"
 
 enum Spells
 {
@@ -154,15 +157,18 @@ enum XT002Data
 
 enum Yells
 {
-    SAY_AGGRO                                   = -1603300,
-    SAY_HEART_OPENED                            = -1603301,
-    SAY_HEART_CLOSED                            = -1603302,
-    SAY_TYMPANIC_TANTRUM                        = -1603303,
-    SAY_SLAY_1                                  = -1603304,
-    SAY_SLAY_2                                  = -1603305,
-    SAY_BERSERK                                 = -1603306,
-    SAY_DEATH                                   = -1603307,
-    SAY_SUMMON                                  = -1603308,
+    SAY_AGGRO                                   = 0,
+    SAY_HEART_OPENED                            = 1,
+    SAY_HEART_CLOSED                            = 2,
+    SAY_TYMPANIC_TANTRUM                        = 3,
+    SAY_SLAY                                    = 4,
+    SAY_BERSERK                                 = 5,
+    SAY_DEATH                                   = 6,
+    SAY_SUMMON                                  = 7,
+    EMOTE_HEART_OPENED                          = 8,
+    EMOTE_HEART_CLOSED                          = 9,
+    EMOTE_TYMPANIC_TANTRUM                      = 10,
+    EMOTE_SCRAPBOT                              = 11
 };
 
 enum AchievementCredits
@@ -170,7 +176,11 @@ enum AchievementCredits
     ACHIEV_MUST_DECONSTRUCT_FASTER              = 21027,
 };
 
-#define HEART_VEHICLE_SEAT 0
+enum VehicleSeats
+{
+    HEART_VEHICLE_SEAT_NORMAL   = 0,
+    HEART_VEHICLE_SEAT_EXPOSED  = 1,
+};
 
 /*-------------------------------------------------------
  *
@@ -198,6 +208,8 @@ class boss_xt002 : public CreatureScript
                 _Reset();
 
                 me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+                me->SetReactState(REACT_AGGRESSIVE);
+                DoCast(me, SPELL_STAND);
 
                 _healthRecovered = false;
                 _gravityBombCasualty = false;
@@ -214,7 +226,7 @@ class boss_xt002 : public CreatureScript
 
             void EnterCombat(Unit* /*who*/)
             {
-                DoScriptText(SAY_AGGRO, me);
+                Talk(SAY_AGGRO);
                 _EnterCombat();
 
                 events.ScheduleEvent(EVENT_ENRAGE, TIMER_ENRAGE);
@@ -239,14 +251,15 @@ class boss_xt002 : public CreatureScript
                 }
             }
 
-            void KilledUnit(Unit* /*victim*/)
+            void KilledUnit(Unit* who)
             {
-                DoScriptText(RAND(SAY_SLAY_1, SAY_SLAY_2), me);
+                if (who->GetTypeId() == TYPEID_PLAYER)
+                    Talk(SAY_SLAY);
             }
 
             void JustDied(Unit* /*killer*/)
             {
-                DoScriptText(SAY_DEATH, me);
+                Talk(SAY_DEATH);
                 _JustDied();
             }
 
@@ -283,7 +296,8 @@ class boss_xt002 : public CreatureScript
                             events.ScheduleEvent(EVENT_GRAVITY_BOMB, TIMER_GRAVITY_BOMB);
                             break;
                         case EVENT_TYMPANIC_TANTRUM:
-                            DoScriptText(SAY_TYMPANIC_TANTRUM, me);
+                            Talk(SAY_TYMPANIC_TANTRUM);
+                            Talk(EMOTE_TYMPANIC_TANTRUM);
                             DoCast(SPELL_TYMPANIC_TANTRUM);
                             events.ScheduleEvent(EVENT_TYMPANIC_TANTRUM, urand(TIMER_TYMPANIC_TANTRUM_MIN, TIMER_TYMPANIC_TANTRUM_MAX));
                             break;
@@ -291,7 +305,7 @@ class boss_xt002 : public CreatureScript
                             SetPhaseOne();
                             break;
                         case EVENT_ENRAGE:
-                            DoScriptText(SAY_BERSERK, me);
+                            Talk(SAY_BERSERK);
                             DoCast(me, SPELL_ENRAGE);
                             break;
                         case EVENT_ENTER_HARD_MODE:
@@ -316,11 +330,12 @@ class boss_xt002 : public CreatureScript
                     if (me->GetHealthPct() > (25 * (4 - _heartExposed)))
                         ++_heartExposed;
 
+                    Talk(EMOTE_SCRAPBOT);
                     _healthRecovered = true;
                 }
             }
 
-            uint32 GetData(uint32 type)
+            uint32 GetData(uint32 type) const
             {
                 switch (type)
                 {
@@ -350,21 +365,23 @@ class boss_xt002 : public CreatureScript
 
             void ExposeHeart()
             {
-                DoScriptText(SAY_HEART_OPENED, me);
+                Talk(SAY_HEART_OPENED);
+                Talk(EMOTE_HEART_OPENED);
 
                 DoCast(me, SPELL_SUBMERGE);  // WIll make creature untargetable
                 me->AttackStop();
                 me->SetReactState(REACT_PASSIVE);
 
-                Unit* heart = me->GetVehicleKit() ? me->GetVehicleKit()->GetPassenger(HEART_VEHICLE_SEAT) : NULL;
+                Unit* heart = me->GetVehicleKit() ? me->GetVehicleKit()->GetPassenger(HEART_VEHICLE_SEAT_NORMAL) : NULL;
                 if (heart)
                 {
                     heart->CastSpell(heart, SPELL_HEART_OVERLOAD, false);
                     heart->CastSpell(me, SPELL_HEART_LIGHTNING_TETHER, false);
                     heart->CastSpell(heart, SPELL_HEART_HEAL_TO_FULL, true);
                     heart->CastSpell(heart, SPELL_EXPOSED_HEART, false);    // Channeled
-
-                    heart->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE);
+                    heart->ChangeSeat(HEART_VEHICLE_SEAT_EXPOSED, true);
+                    heart->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+                    heart->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_UNK_29);
                }
 
                 events.CancelEvent(EVENT_SEARING_LIGHT);
@@ -381,7 +398,8 @@ class boss_xt002 : public CreatureScript
 
             void SetPhaseOne()
             {
-                DoScriptText(SAY_HEART_CLOSED, me);
+                Talk(SAY_HEART_CLOSED);
+                Talk(EMOTE_HEART_CLOSED);
 
                 DoCast(me, SPELL_STAND);
                 me->SetReactState(REACT_AGGRESSIVE);
@@ -392,11 +410,13 @@ class boss_xt002 : public CreatureScript
                 events.RescheduleEvent(EVENT_GRAVITY_BOMB, TIMER_GRAVITY_BOMB);
                 events.RescheduleEvent(EVENT_TYMPANIC_TANTRUM, urand(TIMER_TYMPANIC_TANTRUM_MIN, TIMER_TYMPANIC_TANTRUM_MAX));
 
-                Unit* heart = me->GetVehicleKit() ? me->GetVehicleKit()->GetPassenger(HEART_VEHICLE_SEAT) : NULL;
+                Unit* heart = me->GetVehicleKit() ? me->GetVehicleKit()->GetPassenger(HEART_VEHICLE_SEAT_EXPOSED) : NULL;
                 if (!heart)
                     return;
 
-                heart->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE);
+                heart->ChangeSeat(HEART_VEHICLE_SEAT_NORMAL, false);
+                heart->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+                heart->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_UNK_29);
                 heart->RemoveAurasDueToSpell(SPELL_EXPOSED_HEART);
 
                 if (!_hardMode)
@@ -425,43 +445,39 @@ class boss_xt002 : public CreatureScript
  *        XT-002 HEART
  *
  *///----------------------------------------------------
+
 class mob_xt002_heart : public CreatureScript
 {
     public:
         mob_xt002_heart() : CreatureScript("mob_xt002_heart") { }
 
+        struct mob_xt002_heartAI : public Scripted_NoMovementAI
+        {
+            mob_xt002_heartAI(Creature* creature) : Scripted_NoMovementAI(creature),
+                _instance(creature->GetInstanceScript())
+            {
+            }
+
+            void UpdateAI(uint32 const /*diff*/) { }
+
+            void JustDied(Unit* /*killer*/)
+            {
+                Creature* xt002 = _instance ? me->GetCreature(*me, _instance->GetData64(BOSS_XT002)) : NULL;
+                if (!xt002 || !xt002->AI())
+                    return;
+
+                xt002->AI()->SetData(DATA_TRANSFERED_HEALTH, me->GetHealth());
+                xt002->AI()->DoAction(ACTION_ENTER_HARD_MODE);
+            }
+
+        private:
+            InstanceScript* _instance;
+        };
+
         CreatureAI* GetAI(Creature* creature) const
         {
             return new mob_xt002_heartAI(creature);
         }
-
-        struct mob_xt002_heartAI : public ScriptedAI
-        {
-            mob_xt002_heartAI(Creature* creature) : ScriptedAI(creature)
-            {
-                _instance = creature->GetInstanceScript();
-                me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_DISABLE_MOVE | UNIT_FLAG_STUNNED | UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE);
-                me->SetReactState(REACT_PASSIVE);
-            }
-
-            void DamageTaken(Unit* /*pDone*/, uint32 &damage)
-            {
-                Creature* xt002 = me->GetCreature(*me, _instance->GetData64(BOSS_XT002));
-                if (!xt002 || !xt002->AI())
-                    return;
-
-                if (damage >= me->GetHealth())
-                {
-                    xt002->AI()->SetData(DATA_TRANSFERED_HEALTH, me->GetMaxHealth());
-                    xt002->AI()->DoAction(ACTION_ENTER_HARD_MODE);
-                    damage = 0;
-                }
-            }
-
-            private:
-                InstanceScript* _instance;
-                uint32 _damageTaken;
-        };
 };
 
 /*-------------------------------------------------------
@@ -915,12 +931,13 @@ class spell_xt002_heart_overload_periodic : public SpellScriptLoader
                             {
                                 uint8 a = urand(0, 4);
                                 uint32 spellId = spells[a];
-                                toyPile->CastSpell(toyPile, spellId, true);
+                                toyPile->CastSpell(toyPile, spellId, true, NULL, NULL, instance->GetData64(BOSS_XT002));
                             }
                         }
                     }
 
-                    DoScriptText(SAY_SUMMON, caster->GetVehicleBase());
+                    if (Creature* base = caster->GetVehicleCreatureBase())
+                        base->AI()->Talk(SAY_SUMMON);
                 }
             }
 
@@ -945,9 +962,9 @@ class spell_xt002_tympanic_tantrum : public SpellScriptLoader
         {
             PrepareSpellScript(spell_xt002_tympanic_tantrum_SpellScript);
 
-            void FilterTargets(std::list<Unit*>& unitList)
+            void FilterTargets(std::list<WorldObject*>& targets)
             {
-                unitList.remove_if(PlayerOrPetCheck());
+                targets.remove_if(PlayerOrPetCheck());
             }
 
             void RecalculateDamage()
@@ -957,8 +974,8 @@ class spell_xt002_tympanic_tantrum : public SpellScriptLoader
 
             void Register()
             {
-                OnUnitTargetSelect += SpellUnitTargetFn(spell_xt002_tympanic_tantrum_SpellScript::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
-                OnUnitTargetSelect += SpellUnitTargetFn(spell_xt002_tympanic_tantrum_SpellScript::FilterTargets, EFFECT_1, TARGET_UNIT_SRC_AREA_ENEMY);
+                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_xt002_tympanic_tantrum_SpellScript::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
+                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_xt002_tympanic_tantrum_SpellScript::FilterTargets, EFFECT_1, TARGET_UNIT_SRC_AREA_ENEMY);
                 OnHit += SpellHitFn(spell_xt002_tympanic_tantrum_SpellScript::RecalculateDamage);
             }
         };

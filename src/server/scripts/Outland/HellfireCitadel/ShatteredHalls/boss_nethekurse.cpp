@@ -29,41 +29,19 @@ mob_fel_orc_convert
 mob_lesser_shadow_fissure
 EndContentData */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
 #include "shattered_halls.h"
-
-struct Say
-{
-    int32 id;
-};
-
-static Say PeonAttacked[]=
-{
-    {-1540001},
-    {-1540002},
-    {-1540003},
-    {-1540004},
-};
-static Say PeonDies[]=
-{
-    {-1540005},
-    {-1540006},
-    {-1540007},
-    {-1540008},
-};
 
 enum eSays
 {
-    SAY_INTRO          = -1540000,
-    SAY_TAUNT_1        = -1540009,
-    SAY_TAUNT_2        = -1540010,
-    SAY_TAUNT_3        = -1540011,
-    SAY_AGGRO_1        = -1540012,
-    SAY_AGGRO_2        = -1540013,
-    SAY_AGGRO_3        = -1540014,
-    SAY_SLAY_1         = -1540015,
-    SAY_SLAY_2         = -1540016,
-    SAY_DIE            = -1540017,
+    SAY_INTRO          = 0,
+    SAY_PEON_ATTACKED  = 1,
+    SAY_PEON_DIES      = 2,
+    SAY_TAUNT          = 3,
+    SAY_AGGRO          = 4,
+    SAY_SLAY           = 5,
+    SAY_DIE            = 6
 };
 
 enum eSpells
@@ -136,7 +114,7 @@ class boss_grand_warlock_nethekurse : public CreatureScript
                 if (PeonEngagedCount >= 4)
                     return;
 
-                DoScriptText(PeonAttacked[PeonEngagedCount].id, me);
+                Talk(SAY_PEON_ATTACKED);
                 ++PeonEngagedCount;
             }
 
@@ -145,7 +123,7 @@ class boss_grand_warlock_nethekurse : public CreatureScript
                 if (PeonKilledCount >= 4)
                     return;
 
-                DoScriptText(PeonDies[PeonKilledCount].id, me);
+                Talk(SAY_PEON_DIES);
                 ++PeonKilledCount;
 
                 if (PeonKilledCount == 4)
@@ -158,7 +136,7 @@ class boss_grand_warlock_nethekurse : public CreatureScript
 
             void DoTauntPeons()
             {
-                DoScriptText(RAND(SAY_TAUNT_1, SAY_TAUNT_2, SAY_TAUNT_3), me);
+                Talk(SAY_TAUNT);
 
                 //TODO: kill the peons first
                 IsIntroEvent = false;
@@ -189,7 +167,7 @@ class boss_grand_warlock_nethekurse : public CreatureScript
                     if (who->GetTypeId() != TYPEID_PLAYER)
                         return;
 
-                        DoScriptText(SAY_INTRO, me);
+                        Talk(SAY_INTRO);
                         IntroOnce = true;
                         IsIntroEvent = true;
 
@@ -205,7 +183,7 @@ class boss_grand_warlock_nethekurse : public CreatureScript
 
             void EnterCombat(Unit* /*who*/)
             {
-                DoScriptText(RAND(SAY_AGGRO_1, SAY_AGGRO_2, SAY_AGGRO_3), me);
+                Talk(SAY_AGGRO);
             }
 
             void JustSummoned(Creature* summoned)
@@ -221,12 +199,12 @@ class boss_grand_warlock_nethekurse : public CreatureScript
 
             void KilledUnit(Unit* /*victim*/)
             {
-                DoScriptText(RAND(SAY_SLAY_1, SAY_SLAY_2), me);
+                Talk(SAY_SLAY);
             }
 
             void JustDied(Unit* /*killer*/)
             {
-                DoScriptText(SAY_DIE, me);
+                Talk(SAY_DIE);
 
                 if (!instance)
                     return;

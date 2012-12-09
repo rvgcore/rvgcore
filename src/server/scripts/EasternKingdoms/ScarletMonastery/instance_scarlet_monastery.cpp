@@ -23,7 +23,8 @@ SDComment:
 SDCategory: Scarlet Monastery
 EndScriptData */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
 #include "scarlet_monastery.h"
 
 enum Entry
@@ -131,7 +132,7 @@ public:
             }
         }
 
-        uint64 GetData64(uint32 type)
+        uint64 GetData64(uint32 type) const
         {
             switch (type)
             {
@@ -146,7 +147,7 @@ public:
             return 0;
         }
 
-        uint32 GetData(uint32 type)
+        uint32 GetData(uint32 type) const
         {
             if (type == TYPE_MOGRAINE_AND_WHITE_EVENT)
                 return encounter[0];

@@ -23,18 +23,17 @@ SDComment: Event missing. Script for himself 99% blizzlike.
 SDCategory: Tempest Keep, The Mechanar
 EndScriptData */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
 
 enum eSays
 {
-    SAY_AGGRO                      = -1554020,
-    SAY_DOMINATION_1               = -1554021,
-    SAY_DOMINATION_2               = -1554022,
-    SAY_SUMMON                     = -1554023,
-    SAY_ENRAGE                     = -1554024,
-    SAY_SLAY_1                     = -1554025,
-    SAY_SLAY_2                     = -1554026,
-    SAY_DEATH                      = -1554027,
+    SAY_AGGRO                      = 0,
+    SAY_DOMINATION                 = 1,
+    SAY_SUMMON                     = 2,
+    SAY_ENRAGE                     = 3,
+    SAY_SLAY                       = 4,
+    SAY_DEATH                      = 5
 };
 // Spells to be casted
 enum eSpells
@@ -95,17 +94,17 @@ class boss_pathaleon_the_calculator : public CreatureScript
             }
             void EnterCombat(Unit* /*who*/)
             {
-                DoScriptText(SAY_AGGRO, me);
+                Talk(SAY_AGGRO);
             }
 
             void KilledUnit(Unit* /*victim*/)
             {
-                DoScriptText(RAND(SAY_SLAY_1, SAY_SLAY_2), me);
+                Talk(SAY_SLAY);
             }
 
             void JustDied(Unit* /*killer*/)
             {
-                DoScriptText(SAY_DEATH, me);
+                Talk(SAY_DEATH);
 
                 summons.DespawnAll();
             }
@@ -134,7 +133,7 @@ class boss_pathaleon_the_calculator : public CreatureScript
                         if (target && Wraith)
                             Wraith->AI()->AttackStart(target);
                     }
-                    DoScriptText(SAY_SUMMON, me);
+                    Talk(SAY_SUMMON);
                     Summon_Timer = urand(30000, 45000);
                 }
                 else
@@ -160,7 +159,7 @@ class boss_pathaleon_the_calculator : public CreatureScript
                 {
                     if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 1))
                     {
-                        DoScriptText(RAND(SAY_DOMINATION_1, SAY_DOMINATION_2), me);
+                        Talk(SAY_DOMINATION);
                         DoCast(target, SPELL_DOMINATION);
                     }
                     Domination_Timer = urand(25000, 30000);
@@ -183,7 +182,7 @@ class boss_pathaleon_the_calculator : public CreatureScript
                 if (!Enraged && HealthBelowPct(21))
                 {
                     DoCast(me, SPELL_FRENZY);
-                    DoScriptText(SAY_ENRAGE, me);
+                    Talk(SAY_ENRAGE);
                     Enraged = true;
 
                 }

@@ -22,6 +22,7 @@
 #include "World.h"
 #include "SharedDefines.h"
 #include "ScriptMgr.h"
+#include "Player.h"
 
 namespace Trinity
 {
@@ -127,7 +128,7 @@ namespace Trinity
                     nBaseExp = 580;
                     break;
                 default:
-                    sLog->outError("BaseGain: Unsupported content level %u", content);
+                    sLog->outError(LOG_FILTER_GENERAL, "BaseGain: Unsupported content level %u", content);
                     nBaseExp = 45;
                     break;
             }

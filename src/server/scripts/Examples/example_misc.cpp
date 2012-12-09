@@ -23,13 +23,8 @@ SDComment: Item, Areatrigger and other small code examples
 SDCategory: Script Examples
 EndScriptData */
 
-#include "ScriptPCH.h"
 #include "ScriptMgr.h"
-
-enum eSay
-{
-    SAY_HI  = -1999925
-};
+#include "Player.h"
 
 class AT_example_areatrigger : public AreaTriggerScript
 {
@@ -42,7 +37,7 @@ class AT_example_areatrigger : public AreaTriggerScript
 
         bool OnTrigger(Player* player, AreaTriggerEntry const* /*trigger*/)
         {
-            DoScriptText(SAY_HI, player);
+            player->Kill(player);
             return true;
         }
 };

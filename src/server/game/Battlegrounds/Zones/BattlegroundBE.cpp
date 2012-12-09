@@ -16,7 +16,6 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Battleground.h"
 #include "BattlegroundBE.h"
 #include "Language.h"
 #include "Object.h"
@@ -65,11 +64,7 @@ void BattlegroundBE::StartingEventOpenDoors()
 void BattlegroundBE::AddPlayer(Player* player)
 {
     Battleground::AddPlayer(player);
-    //create score and add it to map, default values are set in constructor
-    BattlegroundBEScore* sc = new BattlegroundBEScore;
-
-    PlayerScores[player->GetGUID()] = sc;
-
+    PlayerScores[player->GetGUID()] = new BattlegroundScore;
     UpdateArenaWorldState();
 }
 
@@ -89,7 +84,7 @@ void BattlegroundBE::HandleKillPlayer(Player* player, Player* killer)
 
     if (!killer)
     {
-        sLog->outError("Killer player not found");
+        sLog->outError(LOG_FILTER_BATTLEGROUND, "Killer player not found");
         return;
     }
 
@@ -101,34 +96,24 @@ void BattlegroundBE::HandleKillPlayer(Player* player, Player* killer)
 
 bool BattlegroundBE::HandlePlayerUnderMap(Player* player)
 {
-    player->TeleportTo(GetMapId(), 6238.930176f, 262.963470f, 0.889519f, player->GetOrientation(), false);
+    player->TeleportTo(GetMapId(), 6238.930176f, 262.963470f, 0.889519f, player->GetOrientation());
     return true;
 }
 
-void BattlegroundBE::HandleAreaTrigger(Player* Source, uint32 Trigger)
+void BattlegroundBE::HandleAreaTrigger(Player* player, uint32 trigger)
 {
-    // this is wrong way to implement these things. On official it done by gameobject spell cast.
     if (GetStatus() != STATUS_IN_PROGRESS)
         return;
 
-    //uint32 SpellId = 0;
-    //uint64 buff_guid = 0;
-    switch (Trigger)
+    switch (trigger)
     {
         case 4538:                                          // buff trigger?
-            //buff_guid = BgObjects[BG_BE_OBJECT_BUFF_1];
-            break;
         case 4539:                                          // buff trigger?
-            //buff_guid = BgObjects[BG_BE_OBJECT_BUFF_2];
             break;
         default:
-            sLog->outError("WARNING: Unhandled AreaTrigger in Battleground: %u", Trigger);
-            Source->GetSession()->SendAreaTriggerMessage("Warning: Unhandled AreaTrigger in Battleground: %u", Trigger);
+            Battleground::HandleAreaTrigger(player, trigger);
             break;
     }
-
-    //if (buff_guid)
-    //    HandleTriggerBuff(buff_guid, Source);
 }
 
 void BattlegroundBE::FillInitialWorldStates(WorldPacket &data)
@@ -154,7 +139,7 @@ bool BattlegroundBE::SetupBattleground()
         || !AddObject(BG_BE_OBJECT_BUFF_1, BG_BE_OBJECT_TYPE_BUFF_1, 6249.042f, 275.3239f, 11.22033f, -1.448624f, 0, 0, 0.6626201f, -0.7489557f, 120)
         || !AddObject(BG_BE_OBJECT_BUFF_2, BG_BE_OBJECT_TYPE_BUFF_2, 6228.26f, 249.566f, 11.21812f, -0.06981307f, 0, 0, 0.03489945f, -0.9993908f, 120))
     {
-        sLog->outErrorDb("BatteGroundBE: Failed to spawn some object!");
+        sLog->outError(LOG_FILTER_SQL, "BatteGroundBE: Failed to spawn some object!");
         return false;
     }
 

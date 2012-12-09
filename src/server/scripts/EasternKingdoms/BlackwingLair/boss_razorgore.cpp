@@ -23,16 +23,17 @@ SDComment: Needs additional review. Phase 1 NYI (Grethok the Controller)
 SDCategory: Blackwing Lair
 EndScriptData */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
 
 //Razorgore Phase 2 Script
 
 enum Say
 {
-    SAY_EGGS_BROKEN1        = -1469022,
-    SAY_EGGS_BROKEN2        = -1469023,
-    SAY_EGGS_BROKEN3        = -1469024,
-    SAY_DEATH               = -1469025
+    SAY_EGGS_BROKEN1        = 0,
+    SAY_EGGS_BROKEN2        = 1,
+    SAY_EGGS_BROKEN3        = 2,
+    SAY_DEATH               = 3,
 };
 
 enum Spells
@@ -77,7 +78,7 @@ public:
 
         void JustDied(Unit* /*killer*/)
         {
-            DoScriptText(SAY_DEATH, me);
+            Talk(SAY_DEATH);
         }
 
         void UpdateAI(const uint32 diff)

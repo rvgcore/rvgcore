@@ -15,6 +15,7 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "ScriptMgr.h"
 #include "OutdoorPvPSI.h"
 #include "WorldPacket.h"
 #include "Player.h"
@@ -22,9 +23,9 @@
 #include "MapManager.h"
 #include "ObjectMgr.h"
 #include "OutdoorPvPMgr.h"
+#include "ReputationMgr.h"
 #include "Language.h"
 #include "World.h"
-#include "ScriptPCH.h"
 
 OutdoorPvPSI::OutdoorPvPSI()
 {

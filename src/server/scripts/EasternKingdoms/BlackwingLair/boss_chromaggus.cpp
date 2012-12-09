@@ -23,12 +23,13 @@ SDComment: Chromatic Mutation disabled due to lack of core support
 SDCategory: Blackwing Lair
 EndScriptData */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
 
 enum Emotes
 {
-    EMOTE_FRENZY                                           = -1469002,
-    EMOTE_SHIMMER                                          = -1469003
+    EMOTE_FRENZY                                           = 0,
+    EMOTE_SHIMMER                                          = 1,
 };
 
 enum Spells
@@ -218,7 +219,7 @@ public:
                 DoCast(me, spell);
                 CurrentVurln_Spell = spell;
 
-                DoScriptText(EMOTE_SHIMMER, me);
+                Talk(EMOTE_SHIMMER);
                 Shimmer_Timer = 45000;
             } else Shimmer_Timer -= diff;
 
@@ -239,14 +240,12 @@ public:
             //Affliction_Timer
             if (Affliction_Timer <= diff)
             {
-                std::list<HostileReference*> threatlist = me->getThreatManager().getThreatList();
-                for (std::list<HostileReference*>::const_iterator i = threatlist.begin(); i != threatlist.end(); ++i)
+                ThreatContainer::StorageType threatlist = me->getThreatManager().getThreatList();
+                for (ThreatContainer::StorageType::const_iterator i = threatlist.begin(); i != threatlist.end(); ++i)
                 {
-                    Unit* unit;
                     if ((*i) && (*i)->getSource())
                     {
-                        unit = Unit::GetUnit(*me, (*i)->getUnitGuid());
-                        if (unit)
+                        if (Unit* unit = Unit::GetUnit(*me, (*i)->getUnitGuid()))
                         {
                             //Cast affliction
                             DoCast(unit, RAND(SPELL_BROODAF_BLUE, SPELL_BROODAF_BLACK,
@@ -281,7 +280,7 @@ public:
             if (Frenzy_Timer <= diff)
             {
                 DoCast(me, SPELL_FRENZY);
-                DoScriptText(EMOTE_FRENZY, me);
+                Talk(EMOTE_FRENZY);
                 Frenzy_Timer = urand(10000, 15000);
             } else Frenzy_Timer -= diff;
 

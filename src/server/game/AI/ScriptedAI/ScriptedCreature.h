@@ -41,8 +41,10 @@ class SummonList : public std::list<uint64>
 
         template <class Predicate> void DoAction(int32 info, Predicate& predicate, uint16 max = 0)
         {
-            Trinity::Containers::RandomResizeList<uint64, Predicate>(*this, predicate, max);
-            for (iterator i = begin(); i != end(); )
+            // We need to use a copy of SummonList here, otherwise original SummonList would be modified
+            std::list<uint64> listCopy = *this;
+            Trinity::Containers::RandomResizeList<uint64, Predicate>(listCopy, predicate, max);
+            for (iterator i = listCopy.begin(); i != listCopy.end(); )
             {
                 Creature* summon = Unit::GetCreature(*me, *i++);
                 if (summon && summon->IsAIEnabled)
@@ -52,7 +54,7 @@ class SummonList : public std::list<uint64>
 
         void DoZoneInCombat(uint32 entry = 0);
         void RemoveNotExisting();
-        bool HasEntry(uint32 entry);
+        bool HasEntry(uint32 entry) const;
     private:
         Creature* me;
 };
@@ -191,7 +193,7 @@ struct ScriptedAI : public CreatureAI
 
     //Generally used to control if MoveChase() is to be used or not in AttackStart(). Some creatures does not chase victims
     void SetCombatMovement(bool allowMovement);
-    bool IsCombatMovementAllowed() { return _isCombatMovementAllowed; }
+    bool IsCombatMovementAllowed() const { return _isCombatMovementAllowed; }
 
     bool EnterEvadeIfOutOfCombatArea(uint32 const diff);
 
@@ -200,16 +202,16 @@ struct ScriptedAI : public CreatureAI
     //   - for raid in mode 10-Heroic
     //   - for raid in mode 25-heroic
     // DO NOT USE to check raid in mode 25-normal.
-    bool IsHeroic() { return _isHeroic; }
+    bool IsHeroic() const { return _isHeroic; }
 
     // return the dungeon or raid difficulty
-    Difficulty GetDifficulty() { return _difficulty; }
+    Difficulty GetDifficulty() const { return _difficulty; }
 
     // return true for 25 man or 25 man heroic mode
-    bool Is25ManRaid() { return _difficulty & RAID_DIFFICULTY_MASK_25MAN; }
+    bool Is25ManRaid() const { return _difficulty & RAID_DIFFICULTY_MASK_25MAN; }
 
     template<class T> inline
-    const T& DUNGEON_MODE(const T& normal5, const T& heroic10)
+    const T& DUNGEON_MODE(const T& normal5, const T& heroic10) const
     {
         switch (_difficulty)
         {
@@ -225,7 +227,7 @@ struct ScriptedAI : public CreatureAI
     }
 
     template<class T> inline
-    const T& RAID_MODE(const T& normal10, const T& normal25)
+    const T& RAID_MODE(const T& normal10, const T& normal25) const
     {
         switch (_difficulty)
         {
@@ -241,7 +243,7 @@ struct ScriptedAI : public CreatureAI
     }
 
     template<class T> inline
-    const T& RAID_MODE(const T& normal10, const T& normal25, const T& heroic10, const T& heroic25)
+    const T& RAID_MODE(const T& normal10, const T& normal25, const T& heroic10, const T& heroic25) const
     {
         switch (_difficulty)
         {

@@ -140,10 +140,9 @@ Quest::Quest(Field* questRecord)
     for (int i = 0; i < QUEST_EMOTE_COUNT; ++i)
         OfferRewardEmoteDelay[i] = questRecord[140+i].GetInt32();
 
-    StartScript = questRecord[144].GetUInt32();
-    CompleteScript = questRecord[145].GetUInt32();
+    CompleteScript = questRecord[144].GetUInt32();
 
-    // int32 WDBVerified = questRecord[146].GetInt32();
+    // int32 WDBVerified = questRecord[145].GetInt32();
 
     Flags |= SpecialFlags << 20;
     if (Flags & QUEST_TRINITY_FLAGS_AUTO_ACCEPT)
@@ -238,10 +237,11 @@ uint32 Quest::CalculateHonorGain(uint8 level) const
     if (GetRewHonorAddition() > 0 || GetRewHonorMultiplier() > 0.0f)
     {
         // values stored from 0.. for 1...
-        TeamContributionPointsEntry const* tc = sTeamContributionPointsStore.LookupEntry(level-1);
+        TeamContributionPointsEntry const* tc = sTeamContributionPointsStore.LookupEntry(level);
         if (!tc)
             return 0;
-        honor = uint32(tc->value * GetRewHonorMultiplier() * 0.1000000014901161);
+
+        honor = uint32(tc->value * GetRewHonorMultiplier() * 0.1f);
         honor += GetRewHonorAddition();
     }
 

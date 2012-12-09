@@ -23,7 +23,11 @@ SDComment: For what is 63990+63991? Same function but don't work correct...
 SDCategory: Dalaran
 Script Data End */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
+#include "ScriptedGossip.h"
+#include "Player.h"
+#include "WorldSession.h"
 
 /*******************************************************
  * npc_mageguard_dalaran

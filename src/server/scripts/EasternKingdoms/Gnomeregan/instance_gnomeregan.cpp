@@ -15,8 +15,10 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "InstanceScript.h"
 #include "gnomeregan.h"
+#include "Player.h"
 
 #define    MAX_ENCOUNTER  1
 
@@ -112,7 +114,7 @@ public:
             }
         }
 
-        uint32 GetData(uint32 uiType)
+        uint32 GetData(uint32 uiType) const
         {
             switch (uiType)
             {
@@ -121,7 +123,7 @@ public:
             return 0;
         }
 
-        uint64 GetData64(uint32 uiType)
+        uint64 GetData64(uint32 uiType) const
         {
             switch (uiType)
             {

@@ -15,7 +15,9 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
+#include "SpellAuras.h"
 #include "vault_of_archavon.h"
 
 //Emalon spells
@@ -35,9 +37,9 @@ enum Spells
 
 enum BossEmotes
 {
-    EMOTE_OVERCHARGE        = -1590000,
-    EMOTE_MINION_RESPAWN    = -1590001,
-    EMOTE_BERSERK           = -1590002,
+    EMOTE_OVERCHARGE        = 0,
+    EMOTE_MINION_RESPAWN    = 1,
+    EMOTE_BERSERK           = 2
 };
 
 enum Events
@@ -144,14 +146,14 @@ class boss_emalon : public CreatureScript
                                 {
                                     minion->CastSpell(me, SPELL_OVERCHARGED, true);
                                     minion->SetFullHealth();
-                                    DoScriptText(EMOTE_OVERCHARGE, me);
+                                    Talk(EMOTE_OVERCHARGE);
                                     events.ScheduleEvent(EVENT_OVERCHARGE, 45000);
                                 }
                             }
                             break;
                         case EVENT_BERSERK:
                             DoCast(me, SPELL_BERSERK);
-                            DoScriptText(EMOTE_BERSERK, me);
+                            Talk(EMOTE_BERSERK);
                             break;
                         default:
                             break;
@@ -196,7 +198,7 @@ class mob_tempest_minion : public CreatureScript
                     if (emalon->isAlive())
                     {
                         emalon->SummonCreature(MOB_TEMPEST_MINION, 0, 0, 0, 0, TEMPSUMMON_CORPSE_DESPAWN, 0);
-                        DoScriptText(EMOTE_MINION_RESPAWN, me);
+                        Talk(EMOTE_MINION_RESPAWN);
                     }
                 }
             }
@@ -242,7 +244,7 @@ class mob_tempest_minion : public CreatureScript
                         {
                             DoCast(me, SPELL_OVERCHARGED_BLAST);
                             me->DespawnOrUnsummon();
-                            DoScriptText(EMOTE_MINION_RESPAWN, me);
+                            Talk(EMOTE_MINION_RESPAWN);
                         }
                     }
                 }

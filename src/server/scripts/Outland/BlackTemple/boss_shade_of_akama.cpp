@@ -23,15 +23,21 @@ SDComment: Seems to be complete.
 SDCategory: Black Temple
 EndScriptData */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
+#include "ScriptedGossip.h"
 #include "black_temple.h"
+#include "Player.h"
 
-#define SAY_DEATH                   -1564013
-#define SAY_LOW_HEALTH              -1564014
-// Ending cinematic text
-#define SAY_FREE                    -1564015
-#define SAY_BROKEN_FREE_01          -1564016
-#define SAY_BROKEN_FREE_02          -1564017
+enum ShadeOfAkama
+{
+    SAY_DEATH                   = 0,
+    SAY_LOW_HEALTH              = 1,
+    // Ending cinematic text
+    SAY_FREE                    = 2,
+    SAY_BROKEN_FREE_01          = 0,
+    SAY_BROKEN_FREE_02          = 1
+};
 
 #define GOSSIP_ITEM                 "We are ready to fight alongside you, Akama"
 
@@ -320,7 +326,7 @@ public:
                             GridSearcherSucceeded = true;
                         }
                     }
-                } else sLog->outError("SD2 ERROR: No Channelers are stored in the list. This encounter will not work properly");
+                } else sLog->outError(LOG_FILTER_TSCR, "SD2 ERROR: No Channelers are stored in the list. This encounter will not work properly");
             }
         }
 
@@ -338,13 +344,13 @@ public:
             if (reseting)
                 return;
 
-            sLog->outDebug(LOG_FILTER_TSCR, "TSCR: Increasing Death Count for Shade of Akama encounter");
+            sLog->outDebug(LOG_FILTER_TSCR, "Increasing Death Count for Shade of Akama encounter");
             ++DeathCount;
             me->RemoveAuraFromStack(SPELL_SHADE_SOUL_CHANNEL_2);
             if (guid)
             {
                 if (Sorcerers.empty())
-                    sLog->outError("SD2 ERROR: Shade of Akama - attempt to remove guid " UI64FMTD " from Sorcerers list but list is already empty", guid);
+                    sLog->outError(LOG_FILTER_TSCR, "SD2 ERROR: Shade of Akama - attempt to remove guid " UI64FMTD " from Sorcerers list but list is already empty", guid);
                 else  Sorcerers.remove(guid);
             }
         }
@@ -396,17 +402,17 @@ public:
                 {
                     CAST_AI(mob_ashtongue_channeler::mob_ashtongue_channelerAI, (*itr)->AI())->ShadeGUID = me->GetGUID();
                     Channelers.push_back((*itr)->GetGUID());
-                    sLog->outDebug(LOG_FILTER_TSCR, "TSCR: Shade of Akama Grid Search found channeler " UI64FMTD ". Adding to list", (*itr)->GetGUID());
+                    sLog->outDebug(LOG_FILTER_TSCR, "Shade of Akama Grid Search found channeler " UI64FMTD ". Adding to list", (*itr)->GetGUID());
                 }
             }
-            else sLog->outError("SD2 ERROR: Grid Search was unable to find any channelers. Shade of Akama encounter will be buggy");
+            else sLog->outError(LOG_FILTER_TSCR, "SD2 ERROR: Grid Search was unable to find any channelers. Shade of Akama encounter will be buggy");
         }
 
         void SetSelectableChannelers()
         {
             if (Channelers.empty())
             {
-                sLog->outError("SD2 ERROR: Channeler List is empty, Shade of Akama encounter will be buggy");
+                sLog->outError(LOG_FILTER_TSCR, "SD2 ERROR: Channeler List is empty, Shade of Akama encounter will be buggy");
                 return;
             }
 
@@ -532,7 +538,7 @@ void mob_ashtongue_channeler::mob_ashtongue_channelerAI::JustDied(Unit* /*killer
     Creature* Shade = (Unit::GetCreature((*me), ShadeGUID));
     if (Shade && Shade->isAlive())
         CAST_AI(boss_shade_of_akama::boss_shade_of_akamaAI, Shade->AI())->IncrementDeathCount();
-    else sLog->outError("SD2 ERROR: Channeler dead but unable to increment DeathCount for Shade of Akama.");
+    else sLog->outError(LOG_FILTER_TSCR, "SD2 ERROR: Channeler dead but unable to increment DeathCount for Shade of Akama.");
 }
 
 void mob_ashtongue_sorcerer::mob_ashtongue_sorcererAI::JustDied(Unit* /*killer*/)
@@ -540,7 +546,7 @@ void mob_ashtongue_sorcerer::mob_ashtongue_sorcererAI::JustDied(Unit* /*killer*/
     Creature* Shade = (Unit::GetCreature((*me), ShadeGUID));
     if (Shade && Shade->isAlive())
         CAST_AI(boss_shade_of_akama::boss_shade_of_akamaAI, Shade->AI())->IncrementDeathCount(me->GetGUID());
-    else sLog->outError("SD2 ERROR: Sorcerer dead but unable to increment DeathCount for Shade of Akama.");
+    else sLog->outError(LOG_FILTER_TSCR, "SD2 ERROR: Sorcerer dead but unable to increment DeathCount for Shade of Akama.");
 }
 
 class npc_akama_shade : public CreatureScript
@@ -701,7 +707,7 @@ public:
 
         void JustDied(Unit* /*killer*/)
         {
-            DoScriptText(SAY_DEATH, me);
+            Talk(SAY_DEATH);
             EventBegun = false;
             ShadeHasDied = false;
             StartCombat = false;
@@ -726,7 +732,7 @@ public:
 
             if (HealthBelowPct(15) && !HasYelledOnce)
             {
-                DoScriptText(SAY_LOW_HEALTH, me);
+                Talk(SAY_LOW_HEALTH);
                 HasYelledOnce = true;
             }
 
@@ -822,7 +828,7 @@ public:
                         SummonBrokenTimer = 1;
                         break;
                     case 1:
-                        DoScriptText(SAY_FREE, me);
+                        Talk(SAY_FREE);
                         ++EndingTalkCount;
                         SoulRetrieveTimer = 25000;
                         break;
@@ -835,7 +841,7 @@ public:
                                 {
                                     if (!Yelled)
                                     {
-                                        DoScriptText(SAY_BROKEN_FREE_01, unit);
+                                        unit->AI()->Talk(SAY_BROKEN_FREE_01);
                                         Yelled = true;
                                     }
                                     unit->HandleEmoteCommand(EMOTE_ONESHOT_KNEEL);
@@ -860,7 +866,7 @@ public:
                         {
                             for (std::list<uint64>::const_iterator itr = BrokenList.begin(); itr != BrokenList.end(); ++itr)
                                 if (Creature* unit = Unit::GetCreature((*me), *itr))
-                                    unit->MonsterYell(SAY_BROKEN_FREE_02, LANG_UNIVERSAL, 0);
+                                    unit->AI()->Talk(SAY_BROKEN_FREE_02);
                         }
                         SoulRetrieveTimer = 0;
                         break;

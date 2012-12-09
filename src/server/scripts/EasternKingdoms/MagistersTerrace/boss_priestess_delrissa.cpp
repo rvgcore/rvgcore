@@ -23,7 +23,8 @@ SDComment: No Heroic support yet. Needs further testing. Several scripts for pet
 SDCategory: Magister's Terrace
 EndScriptData */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
 #include "magisters_terrace.h"
 
 struct Speech
@@ -33,25 +34,25 @@ struct Speech
 
 static Speech LackeyDeath[]=
 {
-    {-1585013},
-    {-1585014},
-    {-1585015},
-    {-1585016},
+    {1},
+    {2},
+    {3},
+    {4},
 };
 
 static Speech PlayerDeath[]=
 {
-    {-1585017},
-    {-1585018},
-    {-1585019},
-    {-1585020},
-    {-1585021},
+    {5},
+    {6},
+    {7},
+    {8},
+    {9},
 };
 
 enum eEnums
 {
-    SAY_AGGRO               = -1585012,
-    SAY_DEATH               = -1585022,
+    SAY_AGGRO               = 0,
+    SAY_DEATH               = 10,
 
     SPELL_DISPEL_MAGIC      = 27609,
     SPELL_FLASH_HEAL        = 17843,
@@ -143,7 +144,7 @@ public:
 
         void EnterCombat(Unit* who)
         {
-            DoScriptText(SAY_AGGRO, me);
+            Talk(SAY_AGGRO);
 
             for (uint8 i = 0; i < MAX_ACTIVE_LACKEY; ++i)
             {
@@ -215,7 +216,7 @@ public:
             if (victim->GetTypeId() != TYPEID_PLAYER)
                 return;
 
-            DoScriptText(PlayerDeath[PlayersKilled].id, me);
+            Talk(PlayerDeath[PlayersKilled].id);
 
             if (PlayersKilled < 4)
                 ++PlayersKilled;
@@ -223,7 +224,7 @@ public:
 
         void JustDied(Unit* /*killer*/)
         {
-            DoScriptText(SAY_DEATH, me);
+            Talk(SAY_DEATH);
 
             if (!instance)
                 return;
@@ -330,7 +331,6 @@ public:
             DoMeleeAttackIfReady();
         }
     };
-
 };
 
 enum eHealingPotion
@@ -415,7 +415,7 @@ struct boss_priestess_lackey_commonAI : public ScriptedAI
             return;
 
         //should delrissa really yell if dead?
-        DoScriptText(LackeyDeath[uiLackeyDeathCount].id, pDelrissa);
+        pDelrissa->AI()->Talk(LackeyDeath[uiLackeyDeathCount].id);
 
         instance->SetData(DATA_DELRISSA_DEATH_COUNT, SPECIAL);
 
@@ -573,7 +573,6 @@ public:
                 DoMeleeAttackIfReady();
         }
     };
-
 };
 
 enum eWarlockSpells
@@ -670,7 +669,6 @@ public:
             DoMeleeAttackIfReady();
         }
     };
-
 };
 
 enum eKickDown
@@ -727,7 +725,6 @@ public:
             DoMeleeAttackIfReady();
         }
     };
-
 };
 
 enum eMageSpells
@@ -834,8 +831,8 @@ public:
             if (Blink_Timer <= diff)
             {
                 bool InMeleeRange = false;
-                std::list<HostileReference*>& t_list = me->getThreatManager().getThreatList();
-                for (std::list<HostileReference*>::const_iterator itr = t_list.begin(); itr!= t_list.end(); ++itr)
+                ThreatContainer::StorageType const &t_list = me->getThreatManager().getThreatList();
+                for (ThreatContainer::StorageType::const_iterator itr = t_list.begin(); itr!= t_list.end(); ++itr)
                 {
                     if (Unit* target = Unit::GetUnit(*me, (*itr)->getUnitGuid()))
                     {
@@ -858,7 +855,6 @@ public:
             DoMeleeAttackIfReady();
         }
     };
-
 };
 
 enum eWarriorSpells
@@ -921,8 +917,8 @@ public:
             if (Intercept_Stun_Timer <= diff)
             {
                 bool InMeleeRange = false;
-                std::list<HostileReference*>& t_list = me->getThreatManager().getThreatList();
-                for (std::list<HostileReference*>::const_iterator itr = t_list.begin(); itr!= t_list.end(); ++itr)
+                ThreatContainer::StorageType const &t_list = me->getThreatManager().getThreatList();
+                for (ThreatContainer::StorageType::const_iterator itr = t_list.begin(); itr!= t_list.end(); ++itr)
                 {
                     if (Unit* target = Unit::GetUnit(*me, (*itr)->getUnitGuid()))
                     {
@@ -978,7 +974,6 @@ public:
             DoMeleeAttackIfReady();
         }
     };
-
 };
 
 enum eHunterSpells
@@ -1102,7 +1097,6 @@ public:
             }
         }
     };
-
 };
 
 enum Spells
@@ -1202,7 +1196,6 @@ public:
             DoMeleeAttackIfReady();
         }
     };
-
 };
 
 enum eEngineerSpells
@@ -1297,7 +1290,6 @@ public:
             DoMeleeAttackIfReady();
         }
     };
-
 };
 
 /*

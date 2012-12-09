@@ -23,7 +23,9 @@ SDComment:
 SDCategory:
 Script Data End */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
+#include "SpellScript.h"
 #include "halls_of_stone.h"
 
 enum Spells
@@ -43,10 +45,10 @@ enum Spells
 
 enum Yells
 {
-    SAY_AGGRO                                   = -1599007,
-    SAY_KILL                                    = -1599008,
-    SAY_DEATH                                   = -1599009,
-    SAY_SHATTER                                 = -1599010
+    SAY_AGGRO                                   = 0,
+    SAY_KILL                                    = 1,
+    SAY_DEATH                                   = 2,
+    SAY_SHATTER                                 = 3
 };
 
 class boss_krystallus : public CreatureScript
@@ -91,7 +93,7 @@ public:
         }
         void EnterCombat(Unit* /*who*/)
         {
-            DoScriptText(SAY_AGGRO, me);
+            Talk(SAY_AGGRO);
 
             if (instance)
                 instance->SetData(DATA_KRYSTALLUS_EVENT, IN_PROGRESS);
@@ -144,7 +146,7 @@ public:
 
         void JustDied(Unit* /*killer*/)
         {
-            DoScriptText(SAY_DEATH, me);
+            Talk(SAY_DEATH);
 
             if (instance)
                 instance->SetData(DATA_KRYSTALLUS_EVENT, DONE);
@@ -154,20 +156,15 @@ public:
         {
             if (victim == me)
                 return;
-            DoScriptText(SAY_KILL, me);
+            Talk(SAY_KILL);
         }
 
-        void SpellHitTarget(Unit* target, const SpellInfo* pSpell)
+        void SpellHitTarget(Unit* /*target*/, const SpellInfo* pSpell)
         {
             //this part should be in the core
             if (pSpell->Id == SPELL_SHATTER || pSpell->Id == H_SPELL_SHATTER)
             {
-                //this spell must have custom handling in the core, dealing damage based on distance
-                target->CastSpell(target, DUNGEON_MODE(SPELL_SHATTER_EFFECT, H_SPELL_SHATTER_EFFECT), true);
-
-                if (target->HasAura(SPELL_STONED))
-                    target->RemoveAurasDueToSpell(SPELL_STONED);
-
+                // todo: we need eventmap to kill this stuff
                 //clear this, if we are still performing
                 if (bIsSlam)
                 {
@@ -186,7 +183,74 @@ public:
 
 };
 
+class spell_krystallus_shatter : public SpellScriptLoader
+{
+    public:
+        spell_krystallus_shatter() : SpellScriptLoader("spell_krystallus_shatter") { }
+
+        class spell_krystallus_shatter_SpellScript : public SpellScript
+        {
+            PrepareSpellScript(spell_krystallus_shatter_SpellScript);
+
+            void HandleScript(SpellEffIndex /*effIndex*/)
+            {
+                if (Unit* target = GetHitUnit())
+                {
+                    target->RemoveAurasDueToSpell(SPELL_STONED);
+                    target->CastSpell((Unit*)NULL, SPELL_SHATTER_EFFECT, true);
+                }
+            }
+
+            void Register()
+            {
+                OnEffectHitTarget += SpellEffectFn(spell_krystallus_shatter_SpellScript::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+            }
+        };
+
+        SpellScript* GetSpellScript() const
+        {
+            return new spell_krystallus_shatter_SpellScript();
+        }
+};
+
+class spell_krystallus_shatter_effect : public SpellScriptLoader
+{
+    public:
+        spell_krystallus_shatter_effect() : SpellScriptLoader("spell_krystallus_shatter_effect") { }
+
+        class spell_krystallus_shatter_effect_SpellScript : public SpellScript
+        {
+            PrepareSpellScript(spell_krystallus_shatter_effect_SpellScript);
+
+            void CalculateDamage()
+            {
+                if (!GetHitUnit())
+                    return;
+
+                float radius = GetSpellInfo()->Effects[EFFECT_0].CalcRadius(GetCaster());
+                if (!radius)
+                    return;
+
+                float distance = GetCaster()->GetDistance2d(GetHitUnit());
+                if (distance > 1.0f)
+                    SetHitDamage(int32(GetHitDamage() * ((radius - distance) / radius)));
+            }
+
+            void Register()
+            {
+                OnHit += SpellHitFn(spell_krystallus_shatter_effect_SpellScript::CalculateDamage);
+            }
+        };
+
+        SpellScript* GetSpellScript() const
+        {
+            return new spell_krystallus_shatter_effect_SpellScript();
+        }
+};
+
 void AddSC_boss_krystallus()
 {
     new boss_krystallus();
+    new spell_krystallus_shatter();
+    new spell_krystallus_shatter_effect();
 }

@@ -15,7 +15,10 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
+#include "SpellScript.h"
+#include "SpellAuraEffects.h"
 #include "naxxramas.h"
 
 enum Spells
@@ -82,7 +85,7 @@ class boss_loatheb : public CreatureScript
                 _sporeLoserData = false;
             }
 
-            uint32 GetData(uint32 id)
+            uint32 GetData(uint32 id) const
             {
                 if (id != DATA_ACHIEVEMENT_SPORE_LOSER)
                    return 0;

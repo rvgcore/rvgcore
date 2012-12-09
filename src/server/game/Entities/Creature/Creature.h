@@ -54,7 +54,7 @@ enum CreatureFlagsExtra
     CREATURE_FLAG_EXTRA_NO_SKILLGAIN    = 0x00040000,       // creature won't increase weapon skills
     CREATURE_FLAG_EXTRA_TAUNT_DIMINISH  = 0x00080000,       // Taunt is a subject to diminishing returns on this creautre
     CREATURE_FLAG_EXTRA_ALL_DIMINISH    = 0x00100000,       // Creature is subject to all diminishing returns as player are
-    CREATURE_FLAG_EXTRA_DUNGEON_BOSS    = 0x10000000,       // creature is a dungeon boss (SET DYNAMICALLY, DO NOT ADD IN DB)
+    CREATURE_FLAG_EXTRA_DUNGEON_BOSS    = 0x10000000        // creature is a dungeon boss (SET DYNAMICALLY, DO NOT ADD IN DB)
 };
 
 #define CREATURE_FLAG_EXTRA_DB_ALLOWED (CREATURE_FLAG_EXTRA_INSTANCE_BIND | CREATURE_FLAG_EXTRA_CIVILIAN | \
@@ -111,6 +111,7 @@ struct CreatureTemplate
     uint32  rangeattacktime;
     uint32  unit_class;                                     // enum Classes. Note only 4 classes are known for creatures.
     uint32  unit_flags;                                     // enum UnitFlags mask values
+    uint32  unit_flags2;                                    // enum UnitFlags2 mask values
     uint32  dynamicflags;
     uint32  family;                                         // enum CreatureFamily values (optional)
     uint32  trainer_type;
@@ -322,7 +323,7 @@ struct VendorItem
         : item(_item), maxcount(_maxcount), incrtime(_incrtime), ExtendedCost(_ExtendedCost) {}
 
     uint32 item;
-    uint32  maxcount;                                       // 0 for infinity item amount
+    uint32 maxcount;                                        // 0 for infinity item amount
     uint32 incrtime;                                        // time for restore items amount if maxcount != 0
     uint32 ExtendedCost;
 
@@ -411,15 +412,15 @@ typedef std::map<uint32, time_t> CreatureSpellCooldowns;
 
 enum CreatureCellMoveState
 {
-    CREATURE_CELL_MOVE_NONE, //not in move list
-    CREATURE_CELL_MOVE_ACTIVE, //in move list
-    CREATURE_CELL_MOVE_INACTIVE, //in move list but should not move
+    CREATURE_CELL_MOVE_NONE,    // not in move list
+    CREATURE_CELL_MOVE_ACTIVE,  // in move list
+    CREATURE_CELL_MOVE_INACTIVE // in move list but should not move
 };
 
 class MapCreature
 {
-    friend class Map; //map for moving creatures
-    friend class ObjectGridLoader; //grid loader for loading creatures
+    friend class Map;              // map for moving creatures
+    friend class ObjectGridLoader; // grid loader for loading creatures
 
 protected:
     MapCreature() : _moveState(CREATURE_CELL_MOVE_NONE) {}
@@ -519,7 +520,6 @@ class Creature : public Unit, public GridObject<Creature>, public MapCreature
         bool AIM_Initialize(CreatureAI* ai = NULL);
         void Motion_Initialize();
 
-        void AI_SendMoveToPacket(float x, float y, float z, uint32 time, uint32 MovementFlags, uint8 type);
         CreatureAI* AI() const { return (CreatureAI*)i_AI; }
 
         bool SetWalk(bool enable);
@@ -539,6 +539,13 @@ class Creature : public Unit, public GridObject<Creature>, public MapCreature
         void AddCreatureSpellCooldown(uint32 spellid);
         bool HasSpellCooldown(uint32 spell_id) const;
         bool HasCategoryCooldown(uint32 spell_id) const;
+        uint32 GetCreatureSpellCooldownDelay(uint32 spellId) const
+        {
+            CreatureSpellCooldowns::const_iterator itr = m_CreatureSpellCooldowns.find(spellId);
+            time_t t = time(NULL);
+            return uint32(itr != m_CreatureSpellCooldowns.end() && itr->second > t ? itr->second - t : 0);
+        }
+        virtual void ProhibitSpellSchool(SpellSchoolMask idSchoolMask, uint32 unTimeMs);
 
         bool HasSpell(uint32 spellID) const;
 
@@ -576,7 +583,7 @@ class Creature : public Unit, public GridObject<Creature>, public MapCreature
         void YellToZone(int32 textId, uint32 language, uint64 TargetGuid) { MonsterYellToZone(textId, language, TargetGuid); }
 
         // override WorldObject function for proper name localization
-        const char* GetNameForLocaleIdx(LocaleConstant locale_idx) const;
+        std::string const& GetNameForLocaleIdx(LocaleConstant locale_idx) const;
 
         void setDeathState(DeathState s);                   // override virtual Unit::setDeathState
 
@@ -614,12 +621,14 @@ class Creature : public Unit, public GridObject<Creature>, public MapCreature
 
         bool canStartAttack(Unit const* u, bool force) const;
         float GetAttackDistance(Unit const* player) const;
+        float GetAggroRange(Unit const* target) const;
 
         void SendAIReaction(AiReaction reactionType);
 
         Unit* SelectNearestTarget(float dist = 0) const;
         Unit* SelectNearestTargetInAttackDistance(float dist = 0) const;
         Player* SelectNearestPlayer(float distance = 0) const;
+        Unit* SelectNearestHostileUnitInAggroRange(bool useLOS = false) const;
 
         void DoFleeToGetAssistance();
         void CallForHelp(float fRadius);
@@ -660,6 +669,7 @@ class Creature : public Unit, public GridObject<Creature>, public MapCreature
         bool hasInvolvedQuest(uint32 quest_id)  const;
 
         bool isRegeneratingHealth() { return m_regenHealth; }
+        void setRegeneratingHealth(bool regenHealth) { m_regenHealth = regenHealth; }
         virtual uint8 GetPetAutoSpellSize() const { return MAX_SPELL_CHARM; }
         virtual uint32 GetPetAutoSpellOnPos(uint8 pos) const
         {
@@ -674,8 +684,13 @@ class Creature : public Unit, public GridObject<Creature>, public MapCreature
 
         void SetHomePosition(float x, float y, float z, float o) { m_homePosition.Relocate(x, y, z, o); }
         void SetHomePosition(const Position &pos) { m_homePosition.Relocate(pos); }
-        void GetHomePosition(float &x, float &y, float &z, float &ori) { m_homePosition.GetPosition(x, y, z, ori); }
-        Position GetHomePosition() { return m_homePosition; }
+        void GetHomePosition(float &x, float &y, float &z, float &ori) const { m_homePosition.GetPosition(x, y, z, ori); }
+        Position GetHomePosition() const { return m_homePosition; }
+
+        void SetTransportHomePosition(float x, float y, float z, float o) { m_transportHomePosition.Relocate(x, y, z, o); }
+        void SetTransportHomePosition(const Position &pos) { m_transportHomePosition.Relocate(pos); }
+        void GetTransportHomePosition(float &x, float &y, float &z, float &ori) { m_transportHomePosition.GetPosition(x, y, z, ori); }
+        Position GetTransportHomePosition() { return m_transportHomePosition; }
 
         uint32 GetWaypointPath(){return m_path_id;}
         void LoadPath(uint32 pathid) { m_path_id = pathid; }
@@ -750,6 +765,7 @@ class Creature : public Unit, public GridObject<Creature>, public MapCreature
         uint32 m_originalEntry;
 
         Position m_homePosition;
+        Position m_transportHomePosition;
 
         bool DisableReputationGain;
 

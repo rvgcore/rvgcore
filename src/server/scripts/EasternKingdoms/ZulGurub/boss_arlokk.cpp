@@ -23,14 +23,15 @@ SDComment: Wrong cleave and red aura is missing.
 SDCategory: Zul'Gurub
 EndScriptData */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
 #include "zulgurub.h"
 
 enum eYells
 {
-    SAY_AGGRO                   = -1309011,
-    SAY_FEAST_PANTHER           = -1309012,
-    SAY_DEATH                   = -1309013,
+    SAY_AGGRO                   = 0,
+    SAY_FEAST_PANTHER           = 1,
+    SAY_DEATH                   = 2,
 };
 
 enum eSpells
@@ -105,7 +106,7 @@ class boss_arlokk : public CreatureScript
 
             void EnterCombat(Unit* /*who*/)
             {
-                DoScriptText(SAY_AGGRO, me);
+                Talk(SAY_AGGRO);
             }
 
             void JustReachedHome()
@@ -119,7 +120,7 @@ class boss_arlokk : public CreatureScript
 
             void JustDied(Unit* /*killer*/)
             {
-                DoScriptText(SAY_DEATH, me);
+                Talk(SAY_DEATH);
 
                 me->SetDisplayId(MODEL_ID_NORMAL);
                 me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
@@ -130,8 +131,8 @@ class boss_arlokk : public CreatureScript
 
             void DoSummonPhanters()
             {
-                if (Unit* pMarkedTarget = Unit::GetUnit(*me, MarkedTargetGUID))
-                    DoScriptText(SAY_FEAST_PANTHER, me, pMarkedTarget);
+                if (MarkedTargetGUID)
+                    Talk(SAY_FEAST_PANTHER, MarkedTargetGUID);
 
                 me->SummonCreature(NPC_ZULIAN_PROWLER, -11532.7998f, -1649.6734f, 41.4800f, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 15000);
                 me->SummonCreature(NPC_ZULIAN_PROWLER, -11532.9970f, -1606.4840f, 41.2979f, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 15000);
@@ -170,7 +171,7 @@ class boss_arlokk : public CreatureScript
                             MarkedTargetGUID = pMarkedTarget->GetGUID();
                         }
                         else
-                            sLog->outError("TSCR: boss_arlokk could not accuire pMarkedTarget.");
+                            sLog->outError(LOG_FILTER_TSCR, "boss_arlokk could not accuire pMarkedTarget.");
 
                         m_uiMark_Timer = 15000;
                     }

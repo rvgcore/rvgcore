@@ -23,7 +23,8 @@ SDComment:Place Holder
 SDCategory: Sunken Temple
 EndScriptData */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "InstanceScript.h"
 #include "sunken_temple.h"
 
 #define GO_ATALAI_STATUE1 148830
@@ -192,7 +193,7 @@ public:
                 State = data;
          }
 
-         uint32 GetData(uint32 type)
+         uint32 GetData(uint32 type) const
          {
             if (type == EVENT_STATE)
                 return State;

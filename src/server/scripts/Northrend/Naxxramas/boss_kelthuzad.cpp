@@ -23,40 +23,36 @@ SDComment: VERIFY SCRIPT
 SDCategory: Naxxramas
 EndScriptData */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
+#include "SpellScript.h"
+#include "SpellAuraEffects.h"
 #include "naxxramas.h"
+#include "Player.h"
 
 enum Yells
 {
     //when shappiron dies. dialog between kel and lich king (in this order)
-    SAY_SAPP_DIALOG1                                       = -1533084, //not used
-    SAY_SAPP_DIALOG2_LICH                                  = -1533085, //not used
-    SAY_SAPP_DIALOG3                                       = -1533086, //not used
-    SAY_SAPP_DIALOG4_LICH                                  = -1533087, //not used
-    SAY_SAPP_DIALOG5                                       = -1533088, //not used
-    SAY_CAT_DIED                                           = -1533089, //when cat dies, not used
+    SAY_SAPP_DIALOG1                                       = 0, //not used
+    SAY_SAPP_DIALOG2_LICH                                  = 1, //not used
+    SAY_SAPP_DIALOG3                                       = 2, //not used
+    SAY_SAPP_DIALOG4_LICH                                  = 3, //not used
+    SAY_SAPP_DIALOG5                                       = 4, //not used
+    SAY_CAT_DIED                                           = 5, //when cat dies, not used
     //when each of the 4 wing bosses dies
-    SAY_TAUNT1                                             = -1533090, //not used
-    SAY_TAUNT2                                             = -1533091, //not used
-    SAY_TAUNT3                                             = -1533092, //not used
-    SAY_TAUNT4                                             = -1533093, //not used
-    SAY_SUMMON_MINIONS                                     = -1533105, //start of phase 1
-    SAY_AGGRO_1                                            = -1533094, //start of phase 2
-    SAY_AGGRO_2                                            = -1533095,
-    SAY_AGGRO_3                                            = -1533096,
-    SAY_SLAY_1                                             = -1533097,
-    SAY_SLAY_2                                             = -1533098,
-    SAY_DEATH                                              = -1533099,
-    SAY_CHAIN_1                                            = -1533100,
-    SAY_CHAIN_2                                            = -1533101,
-    SAY_FROST_BLAST                                        = -1533102,
-    SAY_SPECIAL_1                                          = -1533106,
-    SAY_SPECIAL_2                                          = -1533107,
-    SAY_SPECIAL_3                                          = -1533108,
-    SAY_REQUEST_AID                                        = -1533103, //start of phase 3
-    SAY_ANSWER_REQUEST                                     = -1533104  //lich king answer
+    SAY_TAUNT                                              = 6,
+    SAY_AGGRO                                              = 7,
+    SAY_SLAY                                               = 8,
+    SAY_DEATH                                              = 9,
+    SAY_CHAIN                                              = 10,
+    SAY_FROST_BLAST                                        = 11,
+    SAY_REQUEST_AID                                        = 12, //start of phase 3
+    SAY_ANSWER_REQUEST                                     = 13, //lich king answer
+    SAY_SUMMON_MINIONS                                     = 14, //start of phase 1
+    SAY_SPECIAL                                            = 15
 };
-enum Event
+
+enum Events
 {
     EVENT_NONE,
     EVENT_BOLT,
@@ -86,6 +82,7 @@ enum Spells
     SPELL_SHADOW_FISURE                                    = 27810,
     SPELL_VOID_BLAST                                       = 27812,
     SPELL_MANA_DETONATION                                  = 27819,
+    SPELL_MANA_DETONATION_DAMAGE                           = 27820,
     SPELL_FROST_BLAST                                      = 27808,
     SPELL_CHAINS_OF_KELTHUZAD                              = 28410, //28408 script effect
     SPELL_KELTHUZAD_CHANNEL                                = 29423,
@@ -299,7 +296,7 @@ public:
             for (itr = chained.begin(); itr != chained.end(); ++itr)
             {
                 if (Player* charmed = Unit::GetPlayer(*me, (*itr).first))
-                    charmed->SetFloatValue(OBJECT_FIELD_SCALE_X, (*itr).second);
+                    charmed->SetObjectScale((*itr).second);
             }
 
             chained.clear();
@@ -335,19 +332,19 @@ public:
 
         void KilledUnit(Unit* /*victim*/)
         {
-            DoScriptText(RAND(SAY_SLAY_1, SAY_SLAY_2), me);
+            Talk(SAY_SLAY);
         }
 
         void JustDied(Unit* /*killer*/)
         {
             _JustDied();
-            DoScriptText(SAY_DEATH, me);
+            Talk(SAY_DEATH);
 
             std::map<uint64, float>::const_iterator itr;
             for (itr = chained.begin(); itr != chained.end(); ++itr)
             {
                 if (Player* player = Unit::GetPlayer(*me, (*itr).first))
-                    player->SetFloatValue(OBJECT_FIELD_SCALE_X, (*itr).second);
+                    player->SetObjectScale((*itr).second);
             }
             chained.clear();
         }
@@ -364,7 +361,7 @@ public:
                     pPortal->ResetDoorOrButton();
             }
             DoCast(me, SPELL_KELTHUZAD_CHANNEL, false);
-            DoScriptText(SAY_SUMMON_MINIONS, me);
+            Talk(SAY_SUMMON_MINIONS);
             Phase = 1;
             me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_DISABLE_MOVE | UNIT_FLAG_NOT_SELECTABLE);
             me->SetFloatValue(UNIT_FIELD_COMBATREACH, 4);
@@ -429,7 +426,7 @@ public:
                             break;
                         case EVENT_PHASE:
                             events.Reset();
-                            DoScriptText(RAND(SAY_AGGRO_1, SAY_AGGRO_2, SAY_AGGRO_3), me);
+                            Talk(SAY_AGGRO);
                             spawns.DespawnAll();
                             me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_DISABLE_MOVE | UNIT_FLAG_NOT_SELECTABLE);
                             me->CastStop();
@@ -458,10 +455,10 @@ public:
                     if (HealthBelowPct(45))
                     {
                         Phase = 3;
-                        DoScriptText(SAY_REQUEST_AID, me);
+                        Talk(SAY_REQUEST_AID);
                         //here Lich King should respond to KelThuzad but I don't know which Creature to make talk
                         //so for now just make Kelthuzad says it.
-                        DoScriptText(SAY_ANSWER_REQUEST, me);
+                        Talk(SAY_ANSWER_REQUEST);
 
                         for (uint8 i = 0; i <= 3; ++i)
                         {
@@ -512,12 +509,12 @@ public:
                                     DoCast(target, SPELL_CHAINS_OF_KELTHUZAD);
                                     float scale = target->GetFloatValue(OBJECT_FIELD_SCALE_X);
                                     chained.insert(std::make_pair(target->GetGUID(), scale));
-                                    target->SetFloatValue(OBJECT_FIELD_SCALE_X, scale * 2);
+                                    target->SetObjectScale(scale * 2);
                                     events.ScheduleEvent(EVENT_CHAINED_SPELL, 2000); //core has 2000ms to set unit flag charm
                                 }
                             }
                             if (!chained.empty())
-                                DoScriptText(RAND(SAY_CHAIN_1, SAY_CHAIN_2), me);
+                                Talk(SAY_CHAIN);
                             events.RepeatEvent(urand(100000, 180000));
                             break;
                         }
@@ -530,7 +527,7 @@ public:
                                 {
                                     if (!player->isCharmed())
                                     {
-                                        player->SetFloatValue(OBJECT_FIELD_SCALE_X, (*itr).second);
+                                        player->SetObjectScale((*itr).second);
                                         std::map<uint64, float>::iterator next = itr;
                                         ++next;
                                         chained.erase(itr);
@@ -603,13 +600,17 @@ public:
                         case EVENT_DETONATE:
                         {
                             std::vector<Unit*> unitList;
-                            std::list<HostileReference*> *threatList = &me->getThreatManager().getThreatList();
-                            for (std::list<HostileReference*>::const_iterator itr = threatList->begin(); itr != threatList->end(); ++itr)
+                            ThreatContainer::StorageType const &threatList = me->getThreatManager().getThreatList();
+                            for (ThreatContainer::StorageType::const_iterator itr = threatList.begin(); itr != threatList.end(); ++itr)
                             {
-                                if ((*itr)->getTarget()->GetTypeId() == TYPEID_PLAYER
-                                    && (*itr)->getTarget()->getPowerType() == POWER_MANA
-                                    && (*itr)->getTarget()->GetPower(POWER_MANA))
-                                    unitList.push_back((*itr)->getTarget());
+                                Unit * const target = (*itr)->getTarget();
+
+                                if (target->GetTypeId() == TYPEID_PLAYER
+                                        && target->getPowerType() == POWER_MANA
+                                        && target->GetPower(POWER_MANA))
+                                {
+                                    unitList.push_back(target);
+                                }
                             }
 
                             if (!unitList.empty())
@@ -617,7 +618,7 @@ public:
                                 std::vector<Unit*>::const_iterator itr = unitList.begin();
                                 advance(itr, rand()%unitList.size());
                                 DoCast(*itr, SPELL_MANA_DETONATION);
-                                DoScriptText(RAND(SAY_SPECIAL_1, SAY_SPECIAL_2, SAY_SPECIAL_3), me);
+                                Talk(SAY_SPECIAL);
                             }
 
                             events.RepeatEvent(urand(20000, 50000));
@@ -632,7 +633,7 @@ public:
                             if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, RAID_MODE(1, 0), 0, true))
                                 DoCast(target, SPELL_FROST_BLAST);
                             if (rand()%2)
-                                DoScriptText(SAY_FROST_BLAST, me);
+                                Talk(SAY_FROST_BLAST);
                             events.RepeatEvent(urand(30000, 90000));
                             break;
                         default:
@@ -650,7 +651,6 @@ public:
     {
         return new boss_kelthuzadAI (creature);
     }
-
 };
 
 class at_kelthuzad_center : public AreaTriggerScript
@@ -773,6 +773,46 @@ class npc_kelthuzad_abomination : public CreatureScript
         }
 };
 
+class spell_kelthuzad_detonate_mana : public SpellScriptLoader
+{
+    public:
+        spell_kelthuzad_detonate_mana() : SpellScriptLoader("spell_kelthuzad_detonate_mana") { }
+
+        class spell_kelthuzad_detonate_mana_AuraScript : public AuraScript
+        {
+            PrepareAuraScript(spell_kelthuzad_detonate_mana_AuraScript);
+
+            bool Validate(SpellInfo const* /*spell*/)
+            {
+                if (!sSpellMgr->GetSpellInfo(SPELL_MANA_DETONATION_DAMAGE))
+                    return false;
+                return true;
+            }
+
+            void HandleScript(AuraEffect const* aurEff)
+            {
+                PreventDefaultAction();
+
+                Unit* target = GetTarget();
+                if (int32 mana = int32(target->GetMaxPower(POWER_MANA) / 10))
+                {
+                    mana = target->ModifyPower(POWER_MANA, -mana);
+                    target->CastCustomSpell(SPELL_MANA_DETONATION_DAMAGE, SPELLVALUE_BASE_POINT0, -mana * 10, target, true, NULL, aurEff);
+                }
+            }
+
+            void Register()
+            {
+                OnEffectPeriodic += AuraEffectPeriodicFn(spell_kelthuzad_detonate_mana_AuraScript::HandleScript, EFFECT_0, SPELL_AURA_PERIODIC_TRIGGER_SPELL);
+            }
+        };
+
+        AuraScript* GetAuraScript() const
+        {
+            return new spell_kelthuzad_detonate_mana_AuraScript();
+        }
+};
+
 class achievement_just_cant_get_enough : public AchievementCriteriaScript
 {
    public:
@@ -796,5 +836,6 @@ void AddSC_boss_kelthuzad()
     new boss_kelthuzad();
     new at_kelthuzad_center();
     new npc_kelthuzad_abomination();
+    new spell_kelthuzad_detonate_mana();
     new achievement_just_cant_get_enough();
 }

@@ -23,11 +23,12 @@ SDComment:
 SDCategory: Blackwing Lair
 EndScriptData */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
 
 enum Emotes
 {
-    EMOTE_FRENZY            = -1469031
+    EMOTE_FRENZY            = 0,
 };
 
 enum Spells
@@ -92,7 +93,7 @@ public:
             //Frenzy_Timer
             if (Frenzy_Timer <= diff)
             {
-                DoScriptText(EMOTE_FRENZY, me);
+                Talk(EMOTE_FRENZY);
                 DoCast(me, SPELL_FRENZY);
                 Frenzy_Timer = urand(8000, 10000);
             } else Frenzy_Timer -= diff;

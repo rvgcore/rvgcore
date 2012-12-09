@@ -25,15 +25,19 @@ EndScriptData */
 
 /* ContentData
 mobs_risen_husk_spirit
-npc_deserter_agitator
 npc_lady_jaina_proudmoore
 npc_nat_pagle
 npc_private_hendel
 npc_cassa_crimsonwing - handled by npc_taxi
 EndContentData */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
 #include "ScriptedEscortAI.h"
+#include "ScriptedGossip.h"
+#include "SpellScript.h"
+#include "Player.h"
+#include "WorldSession.h"
 
 /*######
 ## mobs_risen_husk_spirit
@@ -129,113 +133,21 @@ class mobs_risen_husk_spirit : public CreatureScript
 };
 
 /*######
-## npc_deserter_agitator
+## npc_theramor_guard
 ######*/
 
-enum eDeserter
+enum TheramoreGuard
 {
-    QUEST_TRAITORS_AMONG_US                      = 11126,
-    NPC_THERAMORE_DESERTER                       = 23602,
-};
+    QUEST_DISCREDITING_THE_DESERTERS            = 11133,
 
-const Position DeserterDisappearPos = {-3609.03f, -4332.91f, 9.39354f, 3.73862f};
+    NPC_THERAMORE_GUARD                         = 4979,
 
-#define GOSSIP_ITEM_DESERTER "Your propaganda wont`t work on me. Spout your treasonous filth elsewhere traitor!"
+    SPELL_DOCTORED_LEAFLET                      = 42725,
+    SPELL_PROPAGANDIZED                         = 42246,
 
-class npc_deserter_agitator : public CreatureScript
-{
-public:
-    npc_deserter_agitator() : CreatureScript("npc_deserter_agitator") { }
-
-    bool OnGossipHello(Player* player, Creature* creature)
-    {
-        if (player->GetQuestStatus(QUEST_TRAITORS_AMONG_US) == QUEST_STATUS_INCOMPLETE)
-            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_DESERTER, GOSSIP_SENDER_MAIN, GOSSIP_SENDER_INFO);
-
-        player->SEND_GOSSIP_MENU(player->GetGossipTextId(creature), creature->GetGUID());
-
-        return true;
-    }
-
-    bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action)
-    {
-        player->PlayerTalkClass->ClearMenus();
-
-        if (action == GOSSIP_SENDER_INFO)
-        {
-            player->CLOSE_GOSSIP_MENU();
-            switch (urand(0, 1))
-            {
-                case 0:
-                    creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
-                    creature->setFaction(14);
-                    creature->AI()->AttackStart(player);
-                    break;
-                case 1:
-                    player->KilledMonsterCredit(NPC_THERAMORE_DESERTER, 0);
-                    creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
-                    creature->SetSpeed(MOVE_RUN, creature->GetSpeedRate(MOVE_RUN), true);
-                    creature->setFaction(35);
-                    creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_NON_ATTACKABLE);
-                    creature->SetReactState(REACT_PASSIVE);
-                    creature->GetMotionMaster()->MovePoint(1, DeserterDisappearPos);
-                    break;
-            }
-        }
-
-        return true;
-    }
-
-    CreatureAI* GetAI(Creature* creature) const
-    {
-        return new npc_deserter_agitatorAI(creature);
-    }
-
-    struct npc_deserter_agitatorAI : public ScriptedAI
-    {
-        npc_deserter_agitatorAI(Creature* creature) : ScriptedAI(creature) { }
-
-        void Reset()
-        {
-            me->RestoreFaction();
-            me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_NON_ATTACKABLE);
-            me->SetReactState(REACT_AGGRESSIVE);
-            me->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
-        }
-
-        void MovementInform(uint32 uiType, uint32 uiId)
-        {
-            if (uiType != POINT_MOTION_TYPE)
-                return;
-
-            if (uiId == 1)
-                me->DisappearAndDie();
-        }
-    };
-};
-
-/*######
-## npc_deserter_agitator
-######*/
-
-enum eTheramoreGuard
-{
-    SAY_QUEST1                                   = -1000641,
-    SAY_QUEST2                                   = -1000642,
-    SAY_QUEST3                                   = -1000643,
-    SAY_QUEST4                                   = -1000644,
-    SAY_QUEST5                                   = -1000645,
-    SAY_QUEST6                                   = -1000646,
-    SAY_QUEST7                                   = -1000647,
-    SAY_QUEST8                                   = -1000648,
-    SAY_QUEST9                                   = -1000649,
-
-    QUEST_DISCREDITING_THE_DESERTERS             = 11133,
-
-    NPC_THERAMORE_GUARD                          = 4979,
-
-    SPELL_DOCTORED_LEAFLET                       = 42725,
-    SPELL_PROPAGANDIZED                          = 42246,
+    SAY_QUEST1                                  = 0,
+    SAY_QUEST2                                  = 1,
+    SAY_QUEST3                                  = 2
 };
 
 #define GOSSIP_ITEM_THERAMORE_GUARD "You look like an intelligent person. Why don't you read one of these leaflets and give it some thought?"
@@ -263,10 +175,10 @@ public:
         {
             player->CLOSE_GOSSIP_MENU();
             player->KilledMonsterCredit(NPC_THERAMORE_GUARD, 0);
-            DoScriptText(SAY_QUEST1, creature);
+            creature->AI()->Talk(SAY_QUEST1);
             creature->CastSpell(creature, SPELL_DOCTORED_LEAFLET, false);
             creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
-            CAST_AI(npc_theramore_guard::npc_theramore_guardAI, creature->AI())->uiYellTimer = 4000;
+            CAST_AI(npc_theramore_guard::npc_theramore_guardAI, creature->AI())->YellTimer = 4000;
             CAST_AI(npc_theramore_guard::npc_theramore_guardAI, creature->AI())->bYellTimer = true;
         }
 
@@ -282,40 +194,40 @@ public:
     {
         npc_theramore_guardAI(Creature* creature) : ScriptedAI(creature) { }
 
-        uint32 uiYellTimer;
-        uint32 uiStep;
+        uint32 YellTimer;
+        uint32 Step;
         bool bYellTimer;
 
         void Reset()
         {
             bYellTimer = false;
-            uiStep = 0;
+            Step = 0;
         }
 
-        void UpdateAI(const uint32 uiDiff)
+        void UpdateAI(const uint32 Diff)
         {
             if (!me->HasAura(SPELL_PROPAGANDIZED))
                 me->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
 
-            if (bYellTimer && uiYellTimer <= uiDiff)
+            if (bYellTimer && YellTimer <= Diff)
             {
-                switch (uiStep)
+                switch (Step)
                 {
                     case 0:
-                        DoScriptText(RAND(SAY_QUEST2, SAY_QUEST3, SAY_QUEST4, SAY_QUEST5, SAY_QUEST6), me);
-                        uiYellTimer = 3000;
-                        ++uiStep;
+                        Talk(SAY_QUEST2);
+                        YellTimer = 3000;
+                        ++Step;
                         break;
                     case 1:
-                        DoScriptText(RAND(SAY_QUEST7, SAY_QUEST8, SAY_QUEST9), me);
+                        Talk(SAY_QUEST3);
                         me->HandleEmoteCommand(EMOTE_ONESHOT_LAUGH);
-                        uiStep = 0;
+                        Step = 0;
                         bYellTimer = false;
                         break;
                 }
             }
             else
-                uiYellTimer -= uiDiff;
+                YellTimer -= Diff;
         }
     };
 };
@@ -324,7 +236,7 @@ public:
 ## npc_lady_jaina_proudmoore
 ######*/
 
-enum eLadyJaina
+enum LadyJaina
 {
     QUEST_JAINAS_AUTOGRAPH = 558,
     SPELL_JAINAS_AUTOGRAPH = 23122
@@ -367,7 +279,7 @@ public:
 ## npc_nat_pagle
 ######*/
 
-enum eNatPagle
+enum NatPagle
 {
     QUEST_NATS_MEASURING_TAPE = 8227
 };
@@ -408,14 +320,13 @@ public:
 ## npc_private_hendel
 ######*/
 
-enum eHendel
+enum Hendel
 {
-    // looks like all this text ids are wrong.
-    SAY_PROGRESS_1_TER          = -1000411, // signed for 3568
-    SAY_PROGRESS_2_HEN          = -1000412, // signed for 3568
-    SAY_PROGRESS_3_TER          = -1000413,
-    SAY_PROGRESS_4_TER          = -1000414,
-    EMOTE_SURRENDER             = -1000415,
+    SAY_PROGRESS_1_TER          = 0,
+    SAY_PROGRESS_2_HEN          = 1,
+    SAY_PROGRESS_3_TER          = 2,
+    SAY_PROGRESS_4_TER          = 3,
+    EMOTE_SURRENDER             = 4,
 
     QUEST_MISSING_DIPLO_PT16    = 1324,
     FACTION_HOSTILE             = 168,                      //guessed, may be different
@@ -464,16 +375,16 @@ public:
             AttackStart(pAttacker);
         }
 
-        void DamageTaken(Unit* pDoneBy, uint32 &uiDamage)
+        void DamageTaken(Unit* pDoneBy, uint32 &Damage)
         {
-            if (uiDamage > me->GetHealth() || me->HealthBelowPctDamaged(20, uiDamage))
+            if (Damage > me->GetHealth() || me->HealthBelowPctDamaged(20, Damage))
             {
-                uiDamage = 0;
+                Damage = 0;
 
                 if (Player* player = pDoneBy->GetCharmerOrOwnerPlayerOrPlayerItself())
                     player->GroupEventHappens(QUEST_MISSING_DIPLO_PT16, me);
 
-                DoScriptText(EMOTE_SURRENDER, me);
+                Talk(EMOTE_SURRENDER);
                 EnterEvadeMode();
             }
         }
@@ -485,12 +396,12 @@ public:
 ## npc_zelfrax
 ######*/
 
-const Position MovePosition = {-2967.030f, -3872.1799f, 35.620f, 0.0f};
+Position const MovePosition = {-2967.030f, -3872.1799f, 35.620f, 0.0f};
 
-enum eZelfrax
+enum Zelfrax
 {
-    SAY_ZELFRAX     = -1000472,
-    SAY_ZELFRAX_2   = -1000473
+    SAY_ZELFRAX1     = 0,
+    SAY_ZELFRAX2     = 1
 };
 
 class npc_zelfrax : public CreatureScript
@@ -525,9 +436,9 @@ public:
             }
         }
 
-        void MovementInform(uint32 uiType, uint32 /*uiId*/)
+        void MovementInform(uint32 Type, uint32 /*Id*/)
         {
-            if (uiType != POINT_MOTION_TYPE)
+            if (Type != POINT_MOTION_TYPE)
                 return;
 
             me->SetHomePosition(me->GetPositionX(), me->GetPositionY(), me->GetPositionZ(), me->GetOrientation());
@@ -543,11 +454,11 @@ public:
         {
             SetCombatMovement(false);
             me->GetMotionMaster()->MovePoint(0, MovePosition);
-            DoScriptText(SAY_ZELFRAX, me);
-            DoScriptText(SAY_ZELFRAX_2, me);
+            Talk(SAY_ZELFRAX1);
+            Talk(SAY_ZELFRAX2);
         }
 
-        void UpdateAI(uint32 const /*uiDiff*/)
+        void UpdateAI(uint32 const /*Diff*/)
         {
             if (!UpdateVictim())
                 return;
@@ -562,20 +473,20 @@ public:
 ## npc_stinky
 ######*/
 
-enum eStinky
+enum Stinky
 {
     QUEST_STINKYS_ESCAPE_H                       = 1270,
     QUEST_STINKYS_ESCAPE_A                       = 1222,
-    SAY_QUEST_ACCEPTED                           = -1000507,
-    SAY_STAY_1                                   = -1000508,
-    SAY_STAY_2                                   = -1000509,
-    SAY_STAY_3                                   = -1000510,
-    SAY_STAY_4                                   = -1000511,
-    SAY_STAY_5                                   = -1000512,
-    SAY_STAY_6                                   = -1000513,
-    SAY_QUEST_COMPLETE                           = -1000514,
-    SAY_ATTACKED_1                               = -1000515,
-    EMOTE_DISAPPEAR                              = -1000516
+    SAY_QUEST_ACCEPTED                           = 0,
+    SAY_STAY_1                                   = 1,
+    SAY_STAY_2                                   = 2,
+    SAY_STAY_3                                   = 3,
+    SAY_STAY_4                                   = 4,
+    SAY_STAY_5                                   = 5,
+    SAY_STAY_6                                   = 6,
+    SAY_QUEST_COMPLETE                           = 7,
+    SAY_ATTACKED_1                               = 8,
+    EMOTE_DISAPPEAR                              = 9
 };
 
 class npc_stinky : public CreatureScript
@@ -596,7 +507,7 @@ public:
              {
                  creature->setFaction(FACTION_ESCORT_N_NEUTRAL_ACTIVE);
                  creature->SetStandState(UNIT_STAND_STATE_STAND);
-                 DoScriptText(SAY_QUEST_ACCEPTED, creature);
+                 creature->AI()->Talk(SAY_QUEST_ACCEPTED);
                  pEscortAI->Start(false, false, player->GetGUID());
              }
          }
@@ -616,29 +527,29 @@ public:
             switch (waypointId)
             {
                 case 7:
-                    DoScriptText(SAY_STAY_1, me, player);
+                    Talk(SAY_STAY_1, player->GetGUID());
                     break;
                 case 11:
-                    DoScriptText(SAY_STAY_2, me, player);
+                    Talk(SAY_STAY_2, player->GetGUID());
                     break;
                 case 25:
-                    DoScriptText(SAY_STAY_3, me, player);
+                    Talk(SAY_STAY_3, player->GetGUID());
                     break;
                 case 26:
-                    DoScriptText(SAY_STAY_4, me, player);
+                    Talk(SAY_STAY_4, player->GetGUID());
                     break;
                 case 27:
-                    DoScriptText(SAY_STAY_5, me, player);
+                    Talk(SAY_STAY_5, player->GetGUID());
                     break;
                 case 28:
-                    DoScriptText(SAY_STAY_6, me, player);
+                    Talk(SAY_STAY_6, player->GetGUID());
                     me->SetStandState(UNIT_STAND_STATE_KNEEL);
                     break;
                 case 29:
                     me->SetStandState(UNIT_STAND_STATE_STAND);
                     break;
                 case 37:
-                    DoScriptText(SAY_QUEST_COMPLETE, me, player);
+                    Talk(SAY_QUEST_COMPLETE, player->GetGUID());
                     me->SetSpeed(MOVE_RUN, 1.2f, true);
                     me->SetWalk(false);
                     if (player->GetQuestStatus(QUEST_STINKYS_ESCAPE_H))
@@ -647,14 +558,14 @@ public:
                         player->GroupEventHappens(QUEST_STINKYS_ESCAPE_A, me);
                     break;
                 case 39:
-                    DoScriptText(EMOTE_DISAPPEAR, me);
+                    Talk(EMOTE_DISAPPEAR);
                     break;
             }
         }
 
         void EnterCombat(Unit* who)
         {
-            DoScriptText(SAY_ATTACKED_1, me, who);
+            Talk(SAY_ATTACKED_1, who->GetGUID());
         }
 
         void Reset() {}
@@ -791,16 +702,16 @@ class spell_energize_aoe : public SpellScriptLoader
                 return true;
             }
 
-            void FilterTargets(std::list<Unit*>& unitList)
+            void FilterTargets(std::list<WorldObject*>& targets)
             {
-                for (std::list<Unit*>::iterator itr = unitList.begin(); itr != unitList.end();)
+                for (std::list<WorldObject*>::iterator itr = targets.begin(); itr != targets.end();)
                 {
                     if ((*itr)->GetTypeId() == TYPEID_PLAYER && (*itr)->ToPlayer()->GetQuestStatus(GetSpellInfo()->Effects[EFFECT_1].CalcValue()) == QUEST_STATUS_INCOMPLETE)
                         ++itr;
                     else
-                        unitList.erase(itr++);
+                        targets.erase(itr++);
                 }
-                unitList.push_back(GetCaster());
+                targets.push_back(GetCaster());
             }
 
             void HandleScript(SpellEffIndex effIndex)
@@ -812,8 +723,8 @@ class spell_energize_aoe : public SpellScriptLoader
             void Register()
             {
                 OnEffectHitTarget += SpellEffectFn(spell_energize_aoe_SpellScript::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
-                OnUnitTargetSelect += SpellUnitTargetFn(spell_energize_aoe_SpellScript::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENTRY);
-                OnUnitTargetSelect += SpellUnitTargetFn(spell_energize_aoe_SpellScript::FilterTargets, EFFECT_1, TARGET_UNIT_SRC_AREA_ENTRY);
+                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_energize_aoe_SpellScript::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENTRY);
+                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_energize_aoe_SpellScript::FilterTargets, EFFECT_1, TARGET_UNIT_SRC_AREA_ENTRY);
             }
         };
 
@@ -862,7 +773,6 @@ void AddSC_dustwallow_marsh()
     new npc_zelfrax();
     new npc_stinky();
     new npc_theramore_guard();
-    new npc_deserter_agitator();
     new spell_ooze_zap();
     new spell_ooze_zap_channel_end();
     new spell_energize_aoe();

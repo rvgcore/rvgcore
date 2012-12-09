@@ -15,6 +15,7 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "ScriptMgr.h"
 #include "OutdoorPvPEP.h"
 #include "WorldPacket.h"
 #include "Player.h"
@@ -26,7 +27,6 @@
 #include "Language.h"
 #include "World.h"
 #include "GossipDef.h"
-#include "ScriptPCH.h"
 
 OPvPCapturePointEP_EWT::OPvPCapturePointEP_EWT(OutdoorPvP* pvp)
 : OPvPCapturePoint(pvp), m_TowerState(EP_TS_N), m_UnitsSummonedSide(0)
@@ -693,7 +693,7 @@ void OutdoorPvPEP::BuffTeams()
 {
     for (PlayerSet::iterator itr = m_players[0].begin(); itr != m_players[0].end(); ++itr)
     {
-        Player* player = *itr;
+        if (Player* player = ObjectAccessor::FindPlayer(*itr))
         {
             for (int i = 0; i < 4; ++i)
                 player->RemoveAurasDueToSpell(EP_AllianceBuffs[i]);
@@ -703,7 +703,7 @@ void OutdoorPvPEP::BuffTeams()
     }
     for (PlayerSet::iterator itr = m_players[1].begin(); itr != m_players[1].end(); ++itr)
     {
-        Player* player = *itr;
+        if (Player* player = ObjectAccessor::FindPlayer(*itr))
         {
             for (int i = 0; i < 4; ++i)
                 player->RemoveAurasDueToSpell(EP_HordeBuffs[i]);

@@ -21,7 +21,8 @@ SD%Complete:
 SDComment: Timers and say taken from acid script
 EndScriptData */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
 #include "deadmines.h"
 
 enum eSpels
@@ -34,7 +35,7 @@ enum eSpels
     EQUIP_SWORD             = 5191,
     EQUIP_MACE              = 7230,
 
-    SAY_AGGRO               = -1036001
+    SAY_AGGRO               = 0,
 };
 
 class boss_mr_smite : public CreatureScript
@@ -81,7 +82,7 @@ public:
 
         void EnterCombat(Unit* /*who*/)
         {
-           DoScriptText(SAY_AGGRO, me);
+           Talk(SAY_AGGRO);
         }
 
         bool bCheckChances()

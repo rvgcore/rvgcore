@@ -28,19 +28,18 @@ boss_kelidan_the_breaker
 mob_shadowmoon_channeler
 EndContentData */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
+#include "SpellAuras.h"
 #include "blood_furnace.h"
 
 enum eKelidan
 {
-    SAY_WAKE                    = -1542000,
-    SAY_ADD_AGGRO_1             = -1542001,
-    SAY_ADD_AGGRO_2             = -1542002,
-    SAY_ADD_AGGRO_3             = -1542003,
-    SAY_KILL_1                  = -1542004,
-    SAY_KILL_2                  = -1542005,
-    SAY_NOVA                    = -1542006,
-    SAY_DIE                     = -1542007,
+    SAY_WAKE                    = 0,
+    SAY_ADD_AGGRO               = 1,
+    SAY_KILL                    = 2,
+    SAY_NOVA                    = 3,
+    SAY_DIE                     = 4,
 
     SPELL_CORRUPTION            = 30938,
     SPELL_EVOCATION             = 30935,
@@ -55,7 +54,9 @@ enum eKelidan
     SPELL_VORTEX                = 37370,
 
     ENTRY_KELIDAN               = 17377,
-    ENTRY_CHANNELER             = 17653
+    ENTRY_CHANNELER             = 17653,
+
+    ACTION_ACTIVATE_ADDS        = 92
 };
 
 const float ShadowmoonChannelers[5][4]=
@@ -105,13 +106,15 @@ class boss_kelidan_the_breaker : public CreatureScript
                 Firenova = false;
                 addYell = false;
                 SummonChannelers();
+                me->SetReactState(REACT_PASSIVE);
+                me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_NON_ATTACKABLE);
                 if (instance)
                     instance->SetData(TYPE_KELIDAN_THE_BREAKER_EVENT, NOT_STARTED);
             }
 
             void EnterCombat(Unit* who)
             {
-                DoScriptText(SAY_WAKE, me);
+                Talk(SAY_WAKE);
                 if (me->IsNonMeleeSpellCasted(false))
                     me->InterruptNonMeleeSpells(true);
                 DoStartMovement(who);
@@ -124,7 +127,7 @@ class boss_kelidan_the_breaker : public CreatureScript
                 if (rand()%2)
                     return;
 
-                DoScriptText(RAND(SAY_KILL_1, SAY_KILL_2), me);
+                Talk(SAY_KILL);
             }
 
             void ChannelerEngaged(Unit* who)
@@ -132,7 +135,7 @@ class boss_kelidan_the_breaker : public CreatureScript
                 if (who && !addYell)
                 {
                     addYell = true;
-                    DoScriptText(RAND(SAY_ADD_AGGRO_1, SAY_ADD_AGGRO_2, SAY_ADD_AGGRO_3), me);
+                    Talk(SAY_ADD_AGGRO);
                 }
                 for (uint8 i=0; i<5; ++i)
                 {
@@ -150,7 +153,8 @@ class boss_kelidan_the_breaker : public CreatureScript
                     if (channeler && channeler->isAlive())
                         return;
                 }
-
+                me->SetReactState(REACT_AGGRESSIVE);
+                me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_NON_ATTACKABLE);
                 if (killer)
                     me->AI()->AttackStart(killer);
             }
@@ -187,7 +191,7 @@ class boss_kelidan_the_breaker : public CreatureScript
 
             void JustDied(Unit* /*killer*/)
             {
-                DoScriptText(SAY_DIE, me);
+                Talk(SAY_DIE);
 
                 if (!instance)
                     return;
@@ -247,7 +251,7 @@ class boss_kelidan_the_breaker : public CreatureScript
                     if (me->IsNonMeleeSpellCasted(false))
                         me->InterruptNonMeleeSpells(true);
 
-                    DoScriptText(SAY_NOVA, me);
+                    Talk(SAY_NOVA);
 
                     if (SpellInfo const* nova = sSpellMgr->GetSpellInfo(SPELL_BURNING_NOVA))
                     {
@@ -267,7 +271,6 @@ class boss_kelidan_the_breaker : public CreatureScript
 
                 DoMeleeAttackIfReady();
             }
-
         };
 
         CreatureAI* GetAI(Creature* creature) const
@@ -293,16 +296,11 @@ class mob_shadowmoon_channeler : public CreatureScript
 {
     public:
 
-        mob_shadowmoon_channeler()
-            : CreatureScript("mob_shadowmoon_channeler")
-        {
-        }
+        mob_shadowmoon_channeler() : CreatureScript("mob_shadowmoon_channeler") {}
 
         struct mob_shadowmoon_channelerAI : public ScriptedAI
         {
-            mob_shadowmoon_channelerAI(Creature* creature) : ScriptedAI(creature)
-            {
-            }
+            mob_shadowmoon_channelerAI(Creature* creature) : ScriptedAI(creature){}
 
             uint32 ShadowBolt_Timer;
             uint32 MarkOfShadow_Timer;

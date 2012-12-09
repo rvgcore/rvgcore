@@ -19,8 +19,10 @@
  * Comment: The event with the Living Mojos is not implemented, just is done that when one of the mojos around the boss take damage will make the boss enter in combat!
  */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
 #include "gundrak.h"
+#include "SpellInfo.h"
 
 enum Spells
 {
@@ -189,7 +191,7 @@ class boss_drakkari_colossus : public CreatureScript
                 }
             }
 
-            uint32 GetData(uint32 data)
+            uint32 GetData(uint32 data) const
             {
                if (data == DATA_COLOSSUS_PHASE)
                    return phase;

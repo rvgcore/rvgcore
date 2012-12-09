@@ -23,6 +23,7 @@
 #include "Spell.h"
 #include "icecrown_citadel.h"
 #include "Vehicle.h"
+#include "GridNotifiers.h"
 
 enum ScriptTexts
 {
@@ -185,17 +186,33 @@ class AbominationDespawner
                     if (Vehicle* veh = summon->GetVehicleKit())
                         veh->RemoveAllPassengers(); // also despawns the vehicle
 
+                    // Found unit is Mutated Abomination, remove it
                     return true;
                 }
 
+                // Found unit is not Mutated Abomintaion, leave it
                 return false;
             }
 
+            // No unit found, remove from SummonList
             return true;
         }
 
     private:
         Unit* _owner;
+};
+
+struct RotfaceHeightCheck
+{
+    RotfaceHeightCheck(Creature* rotface) : _rotface(rotface) { }
+
+    bool operator()(Creature* stalker) const
+    {
+        return stalker->GetPositionZ() < _rotface->GetPositionZ() + 5.0f;
+    }
+
+private:
+    Creature* _rotface;
 };
 
 class boss_professor_putricide : public CreatureScript
@@ -246,7 +263,7 @@ class boss_professor_putricide : public CreatureScript
                 events.Reset();
                 events.ScheduleEvent(EVENT_BERSERK, 600000);
                 events.ScheduleEvent(EVENT_SLIME_PUDDLE, 10000);
-                events.ScheduleEvent(EVENT_UNSTABLE_EXPERIMENT, urand(25000, 30000));
+                events.ScheduleEvent(EVENT_UNSTABLE_EXPERIMENT, urand(30000, 35000));
                 if (IsHeroic())
                     events.ScheduleEvent(EVENT_UNBOUND_PLAGUE, 20000);
 
@@ -295,16 +312,16 @@ class boss_professor_putricide : public CreatureScript
                         // no possible aura seen in sniff adding the aurastate
                         summon->ModifyAuraState(AURA_STATE_UNKNOWN22, true);
                         summon->CastSpell(summon, SPELL_GASEOUS_BLOAT_PROC, true);
-                        summon->CastCustomSpell(SPELL_GASEOUS_BLOAT, SPELLVALUE_AURA_STACK, 10, summon, false);
+                        summon->ApplySpellImmune(0, IMMUNITY_EFFECT, SPELL_EFFECT_KNOCK_BACK, true);
                         summon->SetReactState(REACT_PASSIVE);
-                        return;
+                        break;
                     case NPC_VOLATILE_OOZE:
                         // no possible aura seen in sniff adding the aurastate
                         summon->ModifyAuraState(AURA_STATE_UNKNOWN19, true);
                         summon->CastSpell(summon, SPELL_OOZE_ERUPTION_SEARCH_PERIODIC, true);
-                        summon->CastSpell(summon, SPELL_VOLATILE_OOZE_ADHESIVE, false);
+                        summon->ApplySpellImmune(0, IMMUNITY_EFFECT, SPELL_EFFECT_KNOCK_BACK, true);
                         summon->SetReactState(REACT_PASSIVE);
-                        return;
+                        break;
                     case NPC_CHOKING_GAS_BOMB:
                         summon->CastSpell(summon, SPELL_CHOKING_GAS_BOMB_PERIODIC, true);
                         summon->CastSpell(summon, SPELL_CHOKING_GAS_EXPLOSION_TRIGGER, true);
@@ -426,7 +443,8 @@ class boss_professor_putricide : public CreatureScript
                         if (Creature* rotface = Unit::GetCreature(*me, instance->GetData64(DATA_ROTFACE)))
                         {
                             std::list<Creature*> list;
-                            GetCreatureListWithEntryInGrid(list, rotface, NPC_PUDDLE_STALKER, 36.0f);
+                            GetCreatureListWithEntryInGrid(list, rotface, NPC_PUDDLE_STALKER, 50.0f);
+                            list.remove_if(RotfaceHeightCheck(rotface));
                             if (list.size() > 4)
                             {
                                 list.sort(Trinity::ObjectDistanceOrderPred(rotface));
@@ -508,7 +526,6 @@ class boss_professor_putricide : public CreatureScript
                                 SetPhase(PHASE_COMBAT_3);
                                 events.ScheduleEvent(EVENT_MUTATED_PLAGUE, 25000);
                                 events.CancelEvent(EVENT_UNSTABLE_EXPERIMENT);
-                                summons.remove_if(AbominationDespawner(me));
                                 break;
                             default:
                                 break;
@@ -519,27 +536,27 @@ class boss_professor_putricide : public CreatureScript
                 }
             }
 
-            uint32 GetData(uint32 type)
+            uint32 GetData(uint32 type) const
             {
                 switch (type)
                 {
                     case DATA_EXPERIMENT_STAGE:
-                    {
-                        // ALSO MODIFIES!
-                        uint32 ret = uint32(_experimentState);
-                        _experimentState ^= true;
-                        return ret;
-                    }
+                        return _experimentState;
                     case DATA_PHASE:
                         return _phase;
                     case DATA_ABOMINATION:
-                        summons.RemoveNotExisting();
                         return uint32(summons.HasEntry(NPC_MUTATED_ABOMINATION_10) || summons.HasEntry(NPC_MUTATED_ABOMINATION_25));
                     default:
                         break;
                 }
 
                 return 0;
+            }
+
+            void SetData(uint32 id, uint32 data)
+            {
+                if (id == DATA_EXPERIMENT_STAGE)
+                    _experimentState = bool(data);
             }
 
             void UpdateAI(uint32 const diff)
@@ -641,7 +658,7 @@ class boss_professor_putricide : public CreatureScript
                         case EVENT_UNBOUND_PLAGUE:
                             if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, NonTankTargetSelector(me)))
                             {
-                                me->CastCustomSpell(SPELL_UNBOUND_PLAGUE, SPELLVALUE_BASE_POINT0, 775, target);
+                                DoCast(target, SPELL_UNBOUND_PLAGUE);
                                 DoCast(target, SPELL_UNBOUND_PLAGUE_SEARCHER);
                             }
                             events.ScheduleEvent(EVENT_UNBOUND_PLAGUE, 90000);
@@ -666,6 +683,7 @@ class boss_professor_putricide : public CreatureScript
                                         me->SetFacingToObject(face);
                                     me->HandleEmoteCommand(EMOTE_ONESHOT_KNEEL);
                                     Talk(SAY_TRANSFORM_2);
+                                    summons.remove_if(AbominationDespawner(me));
                                     events.ScheduleEvent(EVENT_RESUME_ATTACK, 8500, 0, PHASE_COMBAT_3);
                                     break;
                                 default:
@@ -700,57 +718,78 @@ class boss_professor_putricide : public CreatureScript
         }
 };
 
+class npc_putricide_oozeAI : public ScriptedAI
+{
+    public:
+        npc_putricide_oozeAI(Creature* creature, uint32 hitTargetSpellId) : ScriptedAI(creature),
+            _hitTargetSpellId(hitTargetSpellId), _newTargetSelectTimer(0)
+        {
+        }
+
+        void SpellHitTarget(Unit* /*target*/, SpellInfo const* spell)
+        {
+            if (!_newTargetSelectTimer && spell->Id == sSpellMgr->GetSpellIdForDifficulty(_hitTargetSpellId, me))
+                _newTargetSelectTimer = 1000;
+        }
+
+        void SpellHit(Unit* /*caster*/, SpellInfo const* spell)
+        {
+            if (spell->Id == SPELL_TEAR_GAS_CREATURE)
+                _newTargetSelectTimer = 1000;
+        }
+
+        void UpdateAI(uint32 const diff)
+        {
+            if (!UpdateVictim() && !_newTargetSelectTimer)
+                return;
+
+            if (!_newTargetSelectTimer && !me->IsNonMeleeSpellCasted(false, false, true, false, true))
+                _newTargetSelectTimer = 1000;
+
+            DoMeleeAttackIfReady();
+
+            if (!_newTargetSelectTimer)
+                return;
+
+            if (me->HasAura(SPELL_TEAR_GAS_CREATURE))
+                return;
+
+            if (_newTargetSelectTimer <= diff)
+            {
+                _newTargetSelectTimer = 0;
+                CastMainSpell();
+            }
+            else
+                _newTargetSelectTimer -= diff;
+        }
+
+        virtual void CastMainSpell() = 0;
+
+    private:
+        uint32 _hitTargetSpellId;
+        uint32 _newTargetSelectTimer;
+};
+
 class npc_volatile_ooze : public CreatureScript
 {
     public:
         npc_volatile_ooze() : CreatureScript("npc_volatile_ooze") { }
 
-        struct npc_putricide_oozeAI : public ScriptedAI
+        struct npc_volatile_oozeAI : public npc_putricide_oozeAI
         {
-            npc_putricide_oozeAI(Creature* creature) : ScriptedAI(creature)
+            npc_volatile_oozeAI(Creature* creature) : npc_putricide_oozeAI(creature, SPELL_OOZE_ERUPTION)
             {
-                _newTargetSelectTimer = 0;
             }
 
-            void SpellHitTarget(Unit* /*target*/, SpellInfo const* spell)
+            void CastMainSpell()
             {
-                if (!_newTargetSelectTimer && spell->Id == sSpellMgr->GetSpellIdForDifficulty(SPELL_OOZE_ERUPTION, me))
-                    _newTargetSelectTimer = 1000;
+                me->CastSpell(me, SPELL_VOLATILE_OOZE_ADHESIVE, false);
             }
-
-            void SpellHit(Unit* /*caster*/, SpellInfo const* spell)
-            {
-                if (spell->Id == SPELL_TEAR_GAS_CREATURE)
-                    _newTargetSelectTimer = 1000;
-            }
-
-            void UpdateAI(uint32 const diff)
-            {
-                if (!UpdateVictim() && !_newTargetSelectTimer)
-                    return;
-
-                if (!_newTargetSelectTimer)
-                    return;
-
-                if (me->HasAura(SPELL_TEAR_GAS_CREATURE))
-                    return;
-
-                if (_newTargetSelectTimer <= diff)
-                {
-                    _newTargetSelectTimer = 0;
-                    me->CastSpell(me, SPELL_VOLATILE_OOZE_ADHESIVE, false);
-                }
-                else
-                    _newTargetSelectTimer -= diff;
-            }
-
-        private:
-            uint32 _newTargetSelectTimer;
         };
 
         CreatureAI* GetAI(Creature* creature) const
         {
-            return GetIcecrownCitadelAI<npc_putricide_oozeAI>(creature);
+            return GetIcecrownCitadelAI<npc_volatile_oozeAI>(creature);
         }
 };
 
@@ -759,45 +798,16 @@ class npc_gas_cloud : public CreatureScript
     public:
         npc_gas_cloud() : CreatureScript("npc_gas_cloud") { }
 
-        struct npc_gas_cloudAI : public ScriptedAI
+        struct npc_gas_cloudAI : public npc_putricide_oozeAI
         {
-            npc_gas_cloudAI(Creature* creature) : ScriptedAI(creature)
+            npc_gas_cloudAI(Creature* creature) : npc_putricide_oozeAI(creature, SPELL_EXPUNGED_GAS)
             {
                 _newTargetSelectTimer = 0;
             }
 
-            void SpellHitTarget(Unit* /*target*/, SpellInfo const* spell)
+            void CastMainSpell()
             {
-                if (!_newTargetSelectTimer && spell->Id == sSpellMgr->GetSpellIdForDifficulty(SPELL_EXPUNGED_GAS, me))
-                    _newTargetSelectTimer = 1000;
-            }
-
-            void SpellHit(Unit* /*caster*/, SpellInfo const* spell)
-            {
-                if (spell->Id == SPELL_TEAR_GAS_CREATURE)
-                    _newTargetSelectTimer = 1000;
-            }
-
-            void UpdateAI(uint32 const diff)
-            {
-                if (!UpdateVictim() && !_newTargetSelectTimer)
-                    return;
-
-                DoMeleeAttackIfReady();
-
-                if (!_newTargetSelectTimer)
-                    return;
-
-                if (me->HasAura(SPELL_TEAR_GAS_CREATURE))
-                    return;
-
-                if (_newTargetSelectTimer <= diff)
-                {
-                    _newTargetSelectTimer = 0;
-                    me->CastCustomSpell(SPELL_GASEOUS_BLOAT, SPELLVALUE_AURA_STACK, 10, me, false);
-                }
-                else
-                    _newTargetSelectTimer -= diff;
+                me->CastCustomSpell(SPELL_GASEOUS_BLOAT, SPELLVALUE_AURA_STACK, 10, me, false);
             }
 
         private:
@@ -868,26 +878,26 @@ class spell_putricide_ooze_channel : public SpellScriptLoader
                 return GetCaster()->GetTypeId() == TYPEID_UNIT;
             }
 
-            void SelectTarget(std::list<Unit*>& targetList)
+            void SelectTarget(std::list<WorldObject*>& targets)
             {
-                if (targetList.empty())
+                if (targets.empty())
                 {
                     FinishCast(SPELL_FAILED_NO_VALID_TARGETS);
                     GetCaster()->ToCreature()->DespawnOrUnsummon(1);    // despawn next update
                     return;
                 }
 
-                Unit* target = Trinity::Containers::SelectRandomContainerElement(targetList);
-                targetList.clear();
-                targetList.push_back(target);
+                WorldObject* target = Trinity::Containers::SelectRandomContainerElement(targets);
+                targets.clear();
+                targets.push_back(target);
                 _target = target;
             }
 
-            void SetTarget(std::list<Unit*>& targetList)
+            void SetTarget(std::list<WorldObject*>& targets)
             {
-                targetList.clear();
+                targets.clear();
                 if (_target)
-                    targetList.push_back(_target);
+                    targets.push_back(_target);
             }
 
             void StartAttack()
@@ -898,26 +908,15 @@ class spell_putricide_ooze_channel : public SpellScriptLoader
                 GetCaster()->AddThreat(GetHitUnit(), 500000000.0f);    // value seen in sniff
             }
 
-            // temporary, until SelectTarget are not called on empty lists
-            void CheckTarget()
-            {
-                if (_target)
-                    return;
-
-                FinishCast(SPELL_FAILED_NO_VALID_TARGETS);
-                GetCaster()->ToCreature()->DespawnOrUnsummon(1);    // despawn next update
-            }
-
             void Register()
             {
-                OnUnitTargetSelect += SpellUnitTargetFn(spell_putricide_ooze_channel_SpellScript::SelectTarget, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
-                OnUnitTargetSelect += SpellUnitTargetFn(spell_putricide_ooze_channel_SpellScript::SetTarget, EFFECT_1, TARGET_UNIT_SRC_AREA_ENEMY);
-                OnUnitTargetSelect += SpellUnitTargetFn(spell_putricide_ooze_channel_SpellScript::SetTarget, EFFECT_2, TARGET_UNIT_SRC_AREA_ENEMY);
+                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_putricide_ooze_channel_SpellScript::SelectTarget, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
+                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_putricide_ooze_channel_SpellScript::SetTarget, EFFECT_1, TARGET_UNIT_SRC_AREA_ENEMY);
+                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_putricide_ooze_channel_SpellScript::SetTarget, EFFECT_2, TARGET_UNIT_SRC_AREA_ENEMY);
                 AfterHit += SpellHitFn(spell_putricide_ooze_channel_SpellScript::StartAttack);
-                OnCast += SpellCastFn(spell_putricide_ooze_channel_SpellScript::CheckTarget);
             }
 
-            Unit* _target;
+            WorldObject* _target;
         };
 
         SpellScript* GetSpellScript() const
@@ -931,7 +930,7 @@ class ExactDistanceCheck
     public:
         ExactDistanceCheck(Unit* source, float dist) : _source(source), _dist(dist) {}
 
-        bool operator()(Unit* unit)
+        bool operator()(WorldObject* unit) const
         {
             return _source->GetExactDist2d(unit) > _dist;
         }
@@ -950,15 +949,15 @@ class spell_putricide_slime_puddle : public SpellScriptLoader
         {
             PrepareSpellScript(spell_putricide_slime_puddle_SpellScript);
 
-            void ScaleRange(std::list<Unit*>& targets)
+            void ScaleRange(std::list<WorldObject*>& targets)
             {
                 targets.remove_if(ExactDistanceCheck(GetCaster(), 2.5f * GetCaster()->GetFloatValue(OBJECT_FIELD_SCALE_X)));
             }
 
             void Register()
             {
-                OnUnitTargetSelect += SpellUnitTargetFn(spell_putricide_slime_puddle_SpellScript::ScaleRange, EFFECT_0, TARGET_UNIT_DEST_AREA_ENEMY);
-                OnUnitTargetSelect += SpellUnitTargetFn(spell_putricide_slime_puddle_SpellScript::ScaleRange, EFFECT_1, TARGET_UNIT_DEST_AREA_ENTRY);
+                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_putricide_slime_puddle_SpellScript::ScaleRange, EFFECT_0, TARGET_UNIT_DEST_AREA_ENEMY);
+                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_putricide_slime_puddle_SpellScript::ScaleRange, EFFECT_1, TARGET_UNIT_DEST_AREA_ENTRY);
             }
         };
 
@@ -1011,7 +1010,11 @@ class spell_putricide_unstable_experiment : public SpellScriptLoader
                 if (GetCaster()->GetTypeId() != TYPEID_UNIT)
                     return;
 
-                uint32 stage = GetCaster()->ToCreature()->AI()->GetData(DATA_EXPERIMENT_STAGE);
+                Creature* creature = GetCaster()->ToCreature();
+
+                uint32 stage = creature->AI()->GetData(DATA_EXPERIMENT_STAGE);
+                creature->AI()->SetData(DATA_EXPERIMENT_STAGE, stage ^ true);
+
                 Creature* target = NULL;
                 std::list<Creature*> creList;
                 GetCreatureListWithEntryInGrid(creList, GetCaster(), NPC_ABOMINATION_WING_MAD_SCIENTIST_STALKER, 200.0f);
@@ -1123,6 +1126,22 @@ class spell_putricide_unbound_plague : public SpellScriptLoader
                 return true;
             }
 
+            void FilterTargets(std::list<WorldObject*>& targets)
+            {
+                if (AuraEffect const* eff = GetCaster()->GetAuraEffect(SPELL_UNBOUND_PLAGUE_SEARCHER, EFFECT_0))
+                {
+                    if (eff->GetTickNumber() < 2)
+                    {
+                        targets.clear();
+                        return;
+                    }
+                }
+
+
+                targets.remove_if(Trinity::UnitAuraCheck(true, sSpellMgr->GetSpellIdForDifficulty(SPELL_UNBOUND_PLAGUE, GetCaster())));
+                Trinity::Containers::RandomResizeList(targets, 1);
+            }
+
             void HandleScript(SpellEffIndex /*effIndex*/)
             {
                 if (!GetHitUnit())
@@ -1157,6 +1176,7 @@ class spell_putricide_unbound_plague : public SpellScriptLoader
 
             void Register()
             {
+                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_putricide_unbound_plague_SpellScript::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ALLY);
                 OnEffectHitTarget += SpellEffectFn(spell_putricide_unbound_plague_SpellScript::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
             }
         };
@@ -1176,13 +1196,13 @@ class spell_putricide_eat_ooze : public SpellScriptLoader
         {
             PrepareSpellScript(spell_putricide_eat_ooze_SpellScript);
 
-            void SelectTarget(std::list<Unit*>& targets)
+            void SelectTarget(std::list<WorldObject*>& targets)
             {
                 if (targets.empty())
                     return;
 
                 targets.sort(Trinity::ObjectDistanceOrderPred(GetCaster()));
-                Unit* target = targets.front();
+                WorldObject* target = targets.front();
                 targets.clear();
                 targets.push_back(target);
             }
@@ -1209,7 +1229,7 @@ class spell_putricide_eat_ooze : public SpellScriptLoader
             void Register()
             {
                 OnEffectHitTarget += SpellEffectFn(spell_putricide_eat_ooze_SpellScript::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
-                OnUnitTargetSelect += SpellUnitTargetFn(spell_putricide_eat_ooze_SpellScript::SelectTarget, EFFECT_0, TARGET_UNIT_DEST_AREA_ENTRY);
+                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_putricide_eat_ooze_SpellScript::SelectTarget, EFFECT_0, TARGET_UNIT_DEST_AREA_ENTRY);
             }
         };
 
@@ -1456,15 +1476,15 @@ class spell_putricide_mutated_transformation_dmg : public SpellScriptLoader
         {
             PrepareSpellScript(spell_putricide_mutated_transformation_dmg_SpellScript);
 
-            void FilterTargetsInitial(std::list<Unit*>& unitList)
+            void FilterTargetsInitial(std::list<WorldObject*>& targets)
             {
                 if (Unit* owner = ObjectAccessor::GetUnit(*GetCaster(), GetCaster()->GetCreatorGUID()))
-                    unitList.remove(owner);
+                    targets.remove(owner);
             }
 
             void Register()
             {
-                OnUnitTargetSelect += SpellUnitTargetFn(spell_putricide_mutated_transformation_dmg_SpellScript::FilterTargetsInitial, EFFECT_0, TARGET_UNIT_SRC_AREA_ALLY);
+                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_putricide_mutated_transformation_dmg_SpellScript::FilterTargetsInitial, EFFECT_0, TARGET_UNIT_SRC_AREA_ALLY);
             }
         };
 

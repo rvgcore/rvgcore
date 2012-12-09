@@ -28,8 +28,10 @@ npc_deathstalker_erland
 pyrewood_ambush
 EndContentData */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
 #include "ScriptedEscortAI.h"
+#include "Player.h"
 
 /*######
 ## npc_deathstalker_erland
@@ -37,20 +39,19 @@ EndContentData */
 
 enum eErland
 {
-    SAY_QUESTACCEPT     = -1000306,
-    SAY_START           = -1000307,
-    SAY_AGGRO_1         = -1000308,
-    SAY_AGGRO_2         = -1000309,
-    SAY_LAST            = -1000310,
+    SAY_QUESTACCEPT     = 0,
+    SAY_START           = 1,
+    SAY_AGGRO           = 2,
+    SAY_PROGRESS        = 3,
+    SAY_LAST            = 4,
 
-    SAY_THANKS          = -1000311,
-    SAY_RANE            = -1000312,
-    SAY_ANSWER          = -1000313,
-    SAY_MOVE_QUINN      = -1000314,
+    SAY_RANE            = 0,
+    SAY_RANE_ANSWER     = 5,
+    SAY_MOVE_QUINN      = 6,
 
-    SAY_GREETINGS       = -1000315,
-    SAY_QUINN           = -1000316,
-    SAY_ON_BYE          = -1000317,
+    SAY_QUINN           = 7,
+    SAY_QUINN_ANSWER    = 0,
+    SAY_BYE             = 8,
 
     QUEST_ESCORTING     = 435,
     NPC_RANE            = 1950,
@@ -75,34 +76,34 @@ public:
             switch (waypointId)
             {
                 case 1:
-                    DoScriptText(SAY_START, me, player);
+                    Talk(SAY_START, player->GetGUID());
+                    break;
+                case 10:
+                    Talk(SAY_PROGRESS);
                     break;
                 case 13:
-                    DoScriptText(SAY_LAST, me, player);
+                    Talk(SAY_LAST, player->GetGUID());
                     player->GroupEventHappens(QUEST_ESCORTING, me);
                     break;
-                case 14:
-                    DoScriptText(SAY_THANKS, me, player);
-                    break;
                 case 15:
-                    if (Unit* Rane = me->FindNearestCreature(NPC_RANE, 20))
-                        DoScriptText(SAY_RANE, Rane);
+                    if (Creature* rane = me->FindNearestCreature(NPC_RANE, 20.0f))
+                        rane->AI()->Talk(SAY_RANE);
                     break;
                 case 16:
-                    DoScriptText(SAY_ANSWER, me);
+                    Talk(SAY_RANE_ANSWER);
                     break;
                 case 17:
-                    DoScriptText(SAY_MOVE_QUINN, me);
+                    Talk(SAY_MOVE_QUINN);
                     break;
                 case 24:
-                    DoScriptText(SAY_GREETINGS, me);
+                    Talk(SAY_QUINN);
                     break;
                 case 25:
-                    if (Unit* Quinn = me->FindNearestCreature(NPC_QUINN, 20))
-                        DoScriptText(SAY_QUINN, Quinn);
+                    if (Creature* quinn = me->FindNearestCreature(NPC_QUINN, 20.0f))
+                        quinn->AI()->Talk(SAY_QUINN_ANSWER);
                     break;
                 case 26:
-                    DoScriptText(SAY_ON_BYE, me, NULL);
+                    Talk(SAY_BYE);
                     break;
             }
         }
@@ -111,7 +112,7 @@ public:
 
         void EnterCombat(Unit* who)
         {
-            DoScriptText(RAND(SAY_AGGRO_1, SAY_AGGRO_2), me, who);
+            Talk(SAY_AGGRO, who->GetGUID());
         }
     };
 
@@ -119,7 +120,7 @@ public:
     {
         if (quest->GetQuestId() == QUEST_ESCORTING)
         {
-            DoScriptText(SAY_QUESTACCEPT, creature, player);
+            creature->AI()->Talk(SAY_QUESTACCEPT, player->GetGUID());
 
             if (npc_escortAI* pEscortAI = CAST_AI(npc_deathstalker_erland::npc_deathstalker_erlandAI, creature->AI()))
                 pEscortAI->Start(true, false, player->GetGUID());
@@ -229,22 +230,18 @@ public:
         {
             if (Creature* summoned = me->SummonCreature(creatureId, PyrewoodSpawnPoints[position][0], PyrewoodSpawnPoints[position][1], PyrewoodSpawnPoints[position][2], PyrewoodSpawnPoints[position][3], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 15000))
             {
-                Player* player = NULL;
                 Unit* target = NULL;
                 if (PlayerGUID)
-                {
-                    player = Unit::GetPlayer(*me, PlayerGUID);
-                    if (player)
-                        target = RAND((Unit*)me, (Unit*)player);
-                } else
+                    if (Player* player = Unit::GetPlayer(*me, PlayerGUID))
+                        if (player->isAlive() && RAND(0, 1))
+                            target = player;
+
+                if (!target)
                     target = me;
 
-                if (target)
-                {
-                    summoned->setFaction(168);
-                    summoned->AddThreat(target, 32.0f);
-                    summoned->AI()->AttackStart(target);
-                }
+                summoned->setFaction(168);
+                summoned->AddThreat(target, 32.0f);
+                summoned->AI()->AttackStart(target);
             }
         }
 
@@ -258,7 +255,7 @@ public:
 
         void UpdateAI(const uint32 diff)
         {
-            //sLog->outString("DEBUG: p(%i) k(%i) d(%u) W(%i)", Phase, KillCount, diff, WaitTimer);
+            //sLog->outInfo(LOG_FILTER_TSCR, "DEBUG: p(%i) k(%i) d(%u) W(%i)", Phase, KillCount, diff, WaitTimer);
 
             if (!QuestInProgress)
                 return;

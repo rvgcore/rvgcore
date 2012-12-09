@@ -22,10 +22,12 @@ Comment: All wp related commands
 Category: commandscripts
 EndScriptData */
 
-#include "ScriptMgr.h"
-#include "ObjectMgr.h"
-#include "WaypointManager.h"
 #include "Chat.h"
+#include "Language.h"
+#include "ObjectMgr.h"
+#include "Player.h"
+#include "ScriptMgr.h"
+#include "WaypointManager.h"
 
 class wp_commandscript : public CommandScript
 {
@@ -642,19 +644,13 @@ public:
         {
             handler->PSendSysMessage("|cff00ff00DEBUG: wp modify del, PathID: |r|cff00ffff%u|r", pathid);
 
-            // wpCreature
-            Creature* wpCreature = NULL;
-
             if (wpGuid != 0)
-            {
-                wpCreature = handler->GetSession()->GetPlayer()->GetMap()->GetCreature(MAKE_NEW_GUID(wpGuid, VISUAL_WAYPOINT, HIGHGUID_UNIT));
-                if (wpCreature)
+                if (Creature* wpCreature = handler->GetSession()->GetPlayer()->GetMap()->GetCreature(MAKE_NEW_GUID(wpGuid, VISUAL_WAYPOINT, HIGHGUID_UNIT)))
                 {
                     wpCreature->CombatStop();
                     wpCreature->DeleteFromDB();
                     wpCreature->AddObjectToRemoveList();
                 }
-            }
 
             PreparedStatement* stmt = WorldDatabase.GetPreparedStatement(WORLD_DEL_WAYPOINT_DATA);
 
@@ -681,15 +677,12 @@ public:
             Player* chr = handler->GetSession()->GetPlayer();
             Map* map = chr->GetMap();
             {
-                // wpCreature
-                Creature* wpCreature = NULL;
                 // What to do:
                 // Move the visual spawnpoint
                 // Respawn the owner of the waypoints
                 if (wpGuid != 0)
                 {
-                    wpCreature = map->GetCreature(MAKE_NEW_GUID(wpGuid, VISUAL_WAYPOINT, HIGHGUID_UNIT));
-                    if (wpCreature)
+                    if (Creature* wpCreature = map->GetCreature(MAKE_NEW_GUID(wpGuid, VISUAL_WAYPOINT, HIGHGUID_UNIT)))
                     {
                         wpCreature->CombatStop();
                         wpCreature->DeleteFromDB();
@@ -949,8 +942,8 @@ public:
                 if (target)
                 {
                     wpCreature->SetDisplayId(target->GetDisplayId());
-                    wpCreature->SetFloatValue(OBJECT_FIELD_SCALE_X, 0.5f);
-                    wpCreature->SetLevel(point > STRONG_MAX_LEVEL ? STRONG_MAX_LEVEL : point);
+                    wpCreature->SetObjectScale(0.5f);
+                    wpCreature->SetLevel(std::min<uint32>(point, STRONG_MAX_LEVEL));
                 }
             }
             while (result->NextRow());
@@ -1003,7 +996,7 @@ public:
             if (target)
             {
                 creature->SetDisplayId(target->GetDisplayId());
-                creature->SetFloatValue(OBJECT_FIELD_SCALE_X, 0.5f);
+                creature->SetObjectScale(0.5f);
             }
 
             return true;
@@ -1052,7 +1045,7 @@ public:
             if (target)
             {
                 creature->SetDisplayId(target->GetDisplayId());
-                creature->SetFloatValue(OBJECT_FIELD_SCALE_X, 0.5f);
+                creature->SetObjectScale(0.5f);
             }
 
             return true;

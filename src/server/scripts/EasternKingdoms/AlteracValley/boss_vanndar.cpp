@@ -15,14 +15,15 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
 
 enum Yells
 {
     YELL_AGGRO                                    = 0,
     YELL_EVADE                                    = 1,
-    YELL_RESPAWN1                                 = -1810010, // no creature_text
-    YELL_RESPAWN2                                 = -1810011, // no creature_text
+  //YELL_RESPAWN1                                 = -1810010, // Missing in database
+  //YELL_RESPAWN2                                 = -1810011, // Missing in database
     YELL_RANDOM                                   = 2,
     YELL_SPELL                                    = 3,
 };
@@ -61,12 +62,6 @@ public:
         void EnterCombat(Unit* /*who*/)
         {
             Talk(YELL_AGGRO);
-        }
-
-        void JustRespawned()
-        {
-            Reset();
-            DoScriptText(RAND(YELL_RESPAWN1, YELL_RESPAWN2), me);
         }
 
         void UpdateAI(const uint32 diff)

@@ -24,6 +24,7 @@
 #include "MapManager.h"
 #include "MoveSplineInit.h"
 #include "ulduar.h"
+#include "Player.h"
 
 enum Texts
 {
@@ -373,11 +374,11 @@ class boss_algalon_the_observer : public CreatureScript
                     case ACTION_INIT_ALGALON:
                         _firstPull = false;
                         me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC);
-                        break;;
+                        break;
                 }
             }
 
-            uint32 GetData(uint32 type)
+            uint32 GetData(uint32 type) const
             {
                 return type == DATA_HAS_FED_ON_TEARS ? _fedOnTears : 1;
             }
@@ -521,7 +522,7 @@ class boss_algalon_the_observer : public CreatureScript
                         if (Creature* wormHole = DoSummon(NPC_WORM_HOLE, CollapsingStarPos[i], TEMPSUMMON_MANUAL_DESPAWN))
                             wormHole->m_Events.AddEvent(new SummonUnleashedDarkMatter(wormHole), wormHole->m_Events.CalculateTime(i >= 2 ? 8000 : 6000));
                 }
-                else if ((int32(me->GetHealth()) - int32(damage)) < CalculatePctF<int32>(int32(me->GetMaxHealth()), 2.5f) && !_fightWon)
+                else if ((int32(me->GetHealth()) - int32(damage)) < CalculatePct<int32>(int32(me->GetMaxHealth()), 2.5f) && !_fightWon)
                 {
                     _fightWon = true;
                     damage = 0;
@@ -727,7 +728,7 @@ class npc_living_constellation : public CreatureScript
                 _isActive = false;
             }
 
-            uint32 GetData(uint32 /*type*/)
+            uint32 GetData(uint32 /*type*/) const
             {
                 return _isActive ? 1 : 0;
             }
@@ -978,7 +979,7 @@ class go_celestial_planetarium_access : public GameObjectScript
                         if (!lock->Index[i])
                             continue;
 
-                        if (player->HasItemCount(lock->Index[i], 1))
+                        if (player->HasItemCount(lock->Index[i]))
                         {
                             hasKey = true;
                             break;
@@ -1044,7 +1045,7 @@ class spell_algalon_phase_punch : public SpellScriptLoader
         {
             PrepareAuraScript(spell_algalon_phase_punch_AuraScript);
 
-            void HandlePeriodic(AuraEffect const* aurEff)
+            void HandlePeriodic(AuraEffect const* /*aurEff*/)
             {
                 PreventDefaultAction();
                 if (GetStackAmount() != 1)
@@ -1080,7 +1081,7 @@ class NotVictimFilter
         {
         }
 
-        bool operator()(Unit* target)
+        bool operator()(WorldObject* target)
         {
             return target != _victim;
         }
@@ -1098,14 +1099,14 @@ class spell_algalon_arcane_barrage : public SpellScriptLoader
         {
             PrepareSpellScript(spell_algalon_arcane_barrage_SpellScript);
 
-            void SelectTarget(std::list<Unit*>& targets)
+            void SelectTarget(std::list<WorldObject*>& targets)
             {
                 targets.remove_if(NotVictimFilter(GetCaster()));
             }
 
             void Register()
             {
-                OnUnitTargetSelect += SpellUnitTargetFn(spell_algalon_arcane_barrage_SpellScript::SelectTarget, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
+                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_algalon_arcane_barrage_SpellScript::SelectTarget, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
             }
         };
 
@@ -1118,9 +1119,9 @@ class spell_algalon_arcane_barrage : public SpellScriptLoader
 class ActiveConstellationFilter
 {
     public:
-        bool operator()(Unit* target) const
+        bool operator()(WorldObject* target) const
         {
-            return target->GetAI()->GetData(0);
+            return target->ToUnit() && target->ToUnit()->GetAI() && target->ToUnit()->GetAI()->GetData(0);
         }
 };
 
@@ -1133,7 +1134,7 @@ class spell_algalon_trigger_3_adds : public SpellScriptLoader
         {
             PrepareSpellScript(spell_algalon_trigger_3_adds_SpellScript);
 
-            void SelectTarget(std::list<Unit*>& targets)
+            void SelectTarget(std::list<WorldObject*>& targets)
             {
                 targets.remove_if(ActiveConstellationFilter());
             }
@@ -1150,7 +1151,7 @@ class spell_algalon_trigger_3_adds : public SpellScriptLoader
 
             void Register()
             {
-                OnUnitTargetSelect += SpellUnitTargetFn(spell_algalon_trigger_3_adds_SpellScript::SelectTarget, EFFECT_0, TARGET_UNIT_SRC_AREA_ENTRY);
+                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_algalon_trigger_3_adds_SpellScript::SelectTarget, EFFECT_0, TARGET_UNIT_SRC_AREA_ENTRY);
             }
         };
 
@@ -1202,7 +1203,7 @@ class spell_algalon_big_bang : public SpellScriptLoader
                 return true;
             }
 
-            void CountTargets(std::list<Unit*>& targets)
+            void CountTargets(std::list<WorldObject*>& targets)
             {
                 _targetCount = targets.size();
             }
@@ -1215,7 +1216,7 @@ class spell_algalon_big_bang : public SpellScriptLoader
 
             void Register()
             {
-                OnUnitTargetSelect += SpellUnitTargetFn(spell_algalon_big_bang_SpellScript::CountTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
+                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_algalon_big_bang_SpellScript::CountTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
                 AfterCast += SpellCastFn(spell_algalon_big_bang_SpellScript::CheckTargets);
             }
 
@@ -1328,7 +1329,7 @@ class spell_algalon_supermassive_fail : public SpellScriptLoader
                 if (!GetHitPlayer())
                     return;
 
-                GetHitPlayer()->GetAchievementMgr().ResetAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET, ACHIEVEMENT_CRITERIA_CONDITION_NO_SPELL_HIT, GetSpellInfo()->Id, true);
+                GetHitPlayer()->ResetAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET, ACHIEVEMENT_CRITERIA_CONDITION_NO_SPELL_HIT, GetSpellInfo()->Id, true);
             }
 
             void Register()

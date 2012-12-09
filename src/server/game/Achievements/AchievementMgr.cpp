@@ -16,30 +16,31 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
-#include "DBCEnums.h"
-#include "ObjectMgr.h"
-#include "ArenaTeamMgr.h"
-#include "GuildMgr.h"
-#include "World.h"
-#include "WorldPacket.h"
-#include "DatabaseEnv.h"
 #include "AchievementMgr.h"
 #include "ArenaTeam.h"
+#include "ArenaTeamMgr.h"
+#include "BattlegroundAB.h"
+#include "Battleground.h"
 #include "CellImpl.h"
+#include "Common.h"
+#include "DatabaseEnv.h"
+#include "DBCEnums.h"
+#include "DisableMgr.h"
 #include "GameEventMgr.h"
 #include "GridNotifiersImpl.h"
 #include "Guild.h"
-#include "Language.h"
-#include "Player.h"
-#include "SpellMgr.h"
-#include "DisableMgr.h"
-#include "ScriptMgr.h"
-#include "MapManager.h"
-#include "Battleground.h"
-#include "BattlegroundAB.h"
-#include "Map.h"
+#include "GuildMgr.h"
 #include "InstanceScript.h"
+#include "Language.h"
+#include "Map.h"
+#include "MapManager.h"
+#include "ObjectMgr.h"
+#include "Player.h"
+#include "ReputationMgr.h"
+#include "ScriptMgr.h"
+#include "SpellMgr.h"
+#include "World.h"
+#include "WorldPacket.h"
 
 namespace Trinity
 {
@@ -75,7 +76,7 @@ bool AchievementCriteriaData::IsValid(AchievementCriteriaEntry const* criteria)
 {
     if (dataType >= MAX_ACHIEVEMENT_CRITERIA_DATA_TYPE)
     {
-        sLog->outErrorDb("Table `achievement_criteria_data` for criteria (Entry: %u) has wrong data type (%u), ignored.", criteria->ID, dataType);
+        sLog->outError(LOG_FILTER_SQL, "Table `achievement_criteria_data` for criteria (Entry: %u) has wrong data type (%u), ignored.", criteria->ID, dataType);
         return false;
     }
 
@@ -107,7 +108,7 @@ bool AchievementCriteriaData::IsValid(AchievementCriteriaEntry const* criteria)
         default:
             if (dataType != ACHIEVEMENT_CRITERIA_DATA_TYPE_SCRIPT)
             {
-                sLog->outErrorDb("Table `achievement_criteria_data` has data for non-supported criteria type (Entry: %u Type: %u), ignored.", criteria->ID, criteria->requiredType);
+                sLog->outError(LOG_FILTER_SQL, "Table `achievement_criteria_data` has data for non-supported criteria type (Entry: %u Type: %u), ignored.", criteria->ID, criteria->requiredType);
                 return false;
             }
             break;
@@ -122,27 +123,21 @@ bool AchievementCriteriaData::IsValid(AchievementCriteriaEntry const* criteria)
         case ACHIEVEMENT_CRITERIA_DATA_TYPE_T_CREATURE:
             if (!creature.id || !sObjectMgr->GetCreatureTemplate(creature.id))
             {
-                sLog->outErrorDb("Table `achievement_criteria_data` (Entry: %u Type: %u) for data type ACHIEVEMENT_CRITERIA_DATA_TYPE_CREATURE (%u) has non-existing creature id in value1 (%u), ignored.",
+                sLog->outError(LOG_FILTER_SQL, "Table `achievement_criteria_data` (Entry: %u Type: %u) for data type ACHIEVEMENT_CRITERIA_DATA_TYPE_CREATURE (%u) has non-existing creature id in value1 (%u), ignored.",
                     criteria->ID, criteria->requiredType, dataType, creature.id);
                 return false;
             }
             return true;
         case ACHIEVEMENT_CRITERIA_DATA_TYPE_T_PLAYER_CLASS_RACE:
-            if (!classRace.class_id && !classRace.race_id)
-            {
-                sLog->outErrorDb("Table `achievement_criteria_data` (Entry: %u Type: %u) for data type ACHIEVEMENT_CRITERIA_DATA_TYPE_T_PLAYER_CLASS_RACE (%u) must not have 0 in either value field, ignored.",
-                    criteria->ID, criteria->requiredType, dataType);
-                return false;
-            }
             if (classRace.class_id && ((1 << (classRace.class_id-1)) & CLASSMASK_ALL_PLAYABLE) == 0)
             {
-                sLog->outErrorDb("Table `achievement_criteria_data` (Entry: %u Type: %u) for data type ACHIEVEMENT_CRITERIA_DATA_TYPE_T_PLAYER_CLASS_RACE (%u) has non-existing class in value1 (%u), ignored.",
+                sLog->outError(LOG_FILTER_SQL, "Table `achievement_criteria_data` (Entry: %u Type: %u) for data type ACHIEVEMENT_CRITERIA_DATA_TYPE_T_PLAYER_CLASS_RACE (%u) has non-existing class in value1 (%u), ignored.",
                     criteria->ID, criteria->requiredType, dataType, classRace.class_id);
                 return false;
             }
             if (classRace.race_id && ((1 << (classRace.race_id-1)) & RACEMASK_ALL_PLAYABLE) == 0)
             {
-                sLog->outErrorDb("Table `achievement_criteria_data` (Entry: %u Type: %u) for data type ACHIEVEMENT_CRITERIA_DATA_TYPE_T_PLAYER_CLASS_RACE (%u) has non-existing race in value2 (%u), ignored.",
+                sLog->outError(LOG_FILTER_SQL, "Table `achievement_criteria_data` (Entry: %u Type: %u) for data type ACHIEVEMENT_CRITERIA_DATA_TYPE_T_PLAYER_CLASS_RACE (%u) has non-existing race in value2 (%u), ignored.",
                     criteria->ID, criteria->requiredType, dataType, classRace.race_id);
                 return false;
             }
@@ -150,7 +145,7 @@ bool AchievementCriteriaData::IsValid(AchievementCriteriaEntry const* criteria)
         case ACHIEVEMENT_CRITERIA_DATA_TYPE_T_PLAYER_LESS_HEALTH:
             if (health.percent < 1 || health.percent > 100)
             {
-                sLog->outErrorDb("Table `achievement_criteria_data` (Entry: %u Type: %u) for data type ACHIEVEMENT_CRITERIA_DATA_TYPE_PLAYER_LESS_HEALTH (%u) has wrong percent value in value1 (%u), ignored.",
+                sLog->outError(LOG_FILTER_SQL, "Table `achievement_criteria_data` (Entry: %u Type: %u) for data type ACHIEVEMENT_CRITERIA_DATA_TYPE_PLAYER_LESS_HEALTH (%u) has wrong percent value in value1 (%u), ignored.",
                     criteria->ID, criteria->requiredType, dataType, health.percent);
                 return false;
             }
@@ -158,7 +153,7 @@ bool AchievementCriteriaData::IsValid(AchievementCriteriaEntry const* criteria)
         case ACHIEVEMENT_CRITERIA_DATA_TYPE_T_PLAYER_DEAD:
             if (player_dead.own_team_flag > 1)
             {
-                sLog->outErrorDb("Table `achievement_criteria_data` (Entry: %u Type: %u) for data type ACHIEVEMENT_CRITERIA_DATA_TYPE_T_PLAYER_DEAD (%u) has wrong boolean value1 (%u).",
+                sLog->outError(LOG_FILTER_SQL, "Table `achievement_criteria_data` (Entry: %u Type: %u) for data type ACHIEVEMENT_CRITERIA_DATA_TYPE_T_PLAYER_DEAD (%u) has wrong boolean value1 (%u).",
                     criteria->ID, criteria->requiredType, dataType, player_dead.own_team_flag);
                 return false;
             }
@@ -169,19 +164,19 @@ bool AchievementCriteriaData::IsValid(AchievementCriteriaEntry const* criteria)
             SpellInfo const* spellEntry = sSpellMgr->GetSpellInfo(aura.spell_id);
             if (!spellEntry)
             {
-                sLog->outErrorDb("Table `achievement_criteria_data` (Entry: %u Type: %u) for data type %s (%u) has wrong spell id in value1 (%u), ignored.",
+                sLog->outError(LOG_FILTER_SQL, "Table `achievement_criteria_data` (Entry: %u Type: %u) for data type %s (%u) has wrong spell id in value1 (%u), ignored.",
                     criteria->ID, criteria->requiredType, (dataType == ACHIEVEMENT_CRITERIA_DATA_TYPE_S_AURA?"ACHIEVEMENT_CRITERIA_DATA_TYPE_S_AURA":"ACHIEVEMENT_CRITERIA_DATA_TYPE_T_AURA"), dataType, aura.spell_id);
                 return false;
             }
             if (aura.effect_idx >= 3)
             {
-                sLog->outErrorDb("Table `achievement_criteria_data` (Entry: %u Type: %u) for data type %s (%u) has wrong spell effect index in value2 (%u), ignored.",
+                sLog->outError(LOG_FILTER_SQL, "Table `achievement_criteria_data` (Entry: %u Type: %u) for data type %s (%u) has wrong spell effect index in value2 (%u), ignored.",
                     criteria->ID, criteria->requiredType, (dataType == ACHIEVEMENT_CRITERIA_DATA_TYPE_S_AURA?"ACHIEVEMENT_CRITERIA_DATA_TYPE_S_AURA":"ACHIEVEMENT_CRITERIA_DATA_TYPE_T_AURA"), dataType, aura.effect_idx);
                 return false;
             }
             if (!spellEntry->Effects[aura.effect_idx].ApplyAuraName)
             {
-                sLog->outErrorDb("Table `achievement_criteria_data` (Entry: %u Type: %u) for data type %s (%u) has non-aura spell effect (ID: %u Effect: %u), ignores.",
+                sLog->outError(LOG_FILTER_SQL, "Table `achievement_criteria_data` (Entry: %u Type: %u) for data type %s (%u) has non-aura spell effect (ID: %u Effect: %u), ignores.",
                     criteria->ID, criteria->requiredType, (dataType == ACHIEVEMENT_CRITERIA_DATA_TYPE_S_AURA?"ACHIEVEMENT_CRITERIA_DATA_TYPE_S_AURA":"ACHIEVEMENT_CRITERIA_DATA_TYPE_T_AURA"), dataType, aura.spell_id, aura.effect_idx);
                 return false;
             }
@@ -190,7 +185,7 @@ bool AchievementCriteriaData::IsValid(AchievementCriteriaEntry const* criteria)
         case ACHIEVEMENT_CRITERIA_DATA_TYPE_S_AREA:
             if (!GetAreaEntryByAreaID(area.id))
             {
-                sLog->outErrorDb("Table `achievement_criteria_data` (Entry: %u Type: %u) for data type ACHIEVEMENT_CRITERIA_DATA_TYPE_S_AREA (%u) has wrong area id in value1 (%u), ignored.",
+                sLog->outError(LOG_FILTER_SQL, "Table `achievement_criteria_data` (Entry: %u Type: %u) for data type ACHIEVEMENT_CRITERIA_DATA_TYPE_S_AREA (%u) has wrong area id in value1 (%u), ignored.",
                     criteria->ID, criteria->requiredType, dataType, area.id);
                 return false;
             }
@@ -198,7 +193,7 @@ bool AchievementCriteriaData::IsValid(AchievementCriteriaEntry const* criteria)
         case ACHIEVEMENT_CRITERIA_DATA_TYPE_T_LEVEL:
             if (level.minlevel > STRONG_MAX_LEVEL)
             {
-                sLog->outErrorDb("Table `achievement_criteria_data` (Entry: %u Type: %u) for data type ACHIEVEMENT_CRITERIA_DATA_TYPE_T_LEVEL (%u) has wrong minlevel in value1 (%u), ignored.",
+                sLog->outError(LOG_FILTER_SQL, "Table `achievement_criteria_data` (Entry: %u Type: %u) for data type ACHIEVEMENT_CRITERIA_DATA_TYPE_T_LEVEL (%u) has wrong minlevel in value1 (%u), ignored.",
                     criteria->ID, criteria->requiredType, dataType, level.minlevel);
                 return false;
             }
@@ -206,7 +201,7 @@ bool AchievementCriteriaData::IsValid(AchievementCriteriaEntry const* criteria)
         case ACHIEVEMENT_CRITERIA_DATA_TYPE_T_GENDER:
             if (gender.gender > GENDER_NONE)
             {
-                sLog->outErrorDb("Table `achievement_criteria_data` (Entry: %u Type: %u) for data type ACHIEVEMENT_CRITERIA_DATA_TYPE_T_GENDER (%u) has wrong gender in value1 (%u), ignored.",
+                sLog->outError(LOG_FILTER_SQL, "Table `achievement_criteria_data` (Entry: %u Type: %u) for data type ACHIEVEMENT_CRITERIA_DATA_TYPE_T_GENDER (%u) has wrong gender in value1 (%u), ignored.",
                     criteria->ID, criteria->requiredType, dataType, gender.gender);
                 return false;
             }
@@ -214,7 +209,7 @@ bool AchievementCriteriaData::IsValid(AchievementCriteriaEntry const* criteria)
         case ACHIEVEMENT_CRITERIA_DATA_TYPE_SCRIPT:
             if (!ScriptId)
             {
-                sLog->outErrorDb("Table `achievement_criteria_data` (Entry: %u Type: %u) for data type ACHIEVEMENT_CRITERIA_DATA_TYPE_SCRIPT (%u) does not have ScriptName set, ignored.",
+                sLog->outError(LOG_FILTER_SQL, "Table `achievement_criteria_data` (Entry: %u Type: %u) for data type ACHIEVEMENT_CRITERIA_DATA_TYPE_SCRIPT (%u) does not have ScriptName set, ignored.",
                     criteria->ID, criteria->requiredType, dataType);
                 return false;
             }
@@ -222,7 +217,7 @@ bool AchievementCriteriaData::IsValid(AchievementCriteriaEntry const* criteria)
         case ACHIEVEMENT_CRITERIA_DATA_TYPE_MAP_DIFFICULTY:
             if (difficulty.difficulty >= MAX_DIFFICULTY)
             {
-                sLog->outErrorDb("Table `achievement_criteria_data` (Entry: %u Type: %u) for data type ACHIEVEMENT_CRITERIA_DATA_TYPE_MAP_DIFFICULTY (%u) has wrong difficulty in value1 (%u), ignored.",
+                sLog->outError(LOG_FILTER_SQL, "Table `achievement_criteria_data` (Entry: %u Type: %u) for data type ACHIEVEMENT_CRITERIA_DATA_TYPE_MAP_DIFFICULTY (%u) has wrong difficulty in value1 (%u), ignored.",
                     criteria->ID, criteria->requiredType, dataType, difficulty.difficulty);
                 return false;
             }
@@ -230,7 +225,7 @@ bool AchievementCriteriaData::IsValid(AchievementCriteriaEntry const* criteria)
         case ACHIEVEMENT_CRITERIA_DATA_TYPE_MAP_PLAYER_COUNT:
             if (map_players.maxcount <= 0)
             {
-                sLog->outErrorDb("Table `achievement_criteria_data` (Entry: %u Type: %u) for data type ACHIEVEMENT_CRITERIA_DATA_TYPE_MAP_PLAYER_COUNT (%u) has wrong max players count in value1 (%u), ignored.",
+                sLog->outError(LOG_FILTER_SQL, "Table `achievement_criteria_data` (Entry: %u Type: %u) for data type ACHIEVEMENT_CRITERIA_DATA_TYPE_MAP_PLAYER_COUNT (%u) has wrong max players count in value1 (%u), ignored.",
                     criteria->ID, criteria->requiredType, dataType, map_players.maxcount);
                 return false;
             }
@@ -238,7 +233,7 @@ bool AchievementCriteriaData::IsValid(AchievementCriteriaEntry const* criteria)
         case ACHIEVEMENT_CRITERIA_DATA_TYPE_T_TEAM:
             if (team.team != ALLIANCE && team.team != HORDE)
             {
-                sLog->outErrorDb("Table `achievement_criteria_data` (Entry: %u Type: %u) for data type ACHIEVEMENT_CRITERIA_DATA_TYPE_T_TEAM (%u) has unknown team in value1 (%u), ignored.",
+                sLog->outError(LOG_FILTER_SQL, "Table `achievement_criteria_data` (Entry: %u Type: %u) for data type ACHIEVEMENT_CRITERIA_DATA_TYPE_T_TEAM (%u) has unknown team in value1 (%u), ignored.",
                     criteria->ID, criteria->requiredType, dataType, team.team);
                 return false;
             }
@@ -246,7 +241,7 @@ bool AchievementCriteriaData::IsValid(AchievementCriteriaEntry const* criteria)
         case ACHIEVEMENT_CRITERIA_DATA_TYPE_S_DRUNK:
             if (drunk.state >= MAX_DRUNKEN)
             {
-                sLog->outErrorDb("Table `achievement_criteria_data` (Entry: %u Type: %u) for data type ACHIEVEMENT_CRITERIA_DATA_TYPE_S_DRUNK (%u) has unknown drunken state in value1 (%u), ignored.",
+                sLog->outError(LOG_FILTER_SQL, "Table `achievement_criteria_data` (Entry: %u Type: %u) for data type ACHIEVEMENT_CRITERIA_DATA_TYPE_S_DRUNK (%u) has unknown drunken state in value1 (%u), ignored.",
                     criteria->ID, criteria->requiredType, dataType, drunk.state);
                 return false;
             }
@@ -254,7 +249,7 @@ bool AchievementCriteriaData::IsValid(AchievementCriteriaEntry const* criteria)
         case ACHIEVEMENT_CRITERIA_DATA_TYPE_HOLIDAY:
             if (!sHolidaysStore.LookupEntry(holiday.id))
             {
-                sLog->outErrorDb("Table `achievement_criteria_data` (Entry: %u Type: %u) for data type ACHIEVEMENT_CRITERIA_DATA_TYPE_HOLIDAY (%u) has unknown holiday in value1 (%u), ignored.",
+                sLog->outError(LOG_FILTER_SQL, "Table `achievement_criteria_data` (Entry: %u Type: %u) for data type ACHIEVEMENT_CRITERIA_DATA_TYPE_HOLIDAY (%u) has unknown holiday in value1 (%u), ignored.",
                     criteria->ID, criteria->requiredType, dataType, holiday.id);
                 return false;
             }
@@ -264,7 +259,7 @@ bool AchievementCriteriaData::IsValid(AchievementCriteriaEntry const* criteria)
         case ACHIEVEMENT_CRITERIA_DATA_TYPE_S_EQUIPED_ITEM:
             if (equipped_item.item_quality >= MAX_ITEM_QUALITY)
             {
-                sLog->outErrorDb("Table `achievement_criteria_requirement` (Entry: %u Type: %u) for requirement ACHIEVEMENT_CRITERIA_REQUIRE_S_EQUIPED_ITEM (%u) has unknown quality state in value1 (%u), ignored.",
+                sLog->outError(LOG_FILTER_SQL, "Table `achievement_criteria_requirement` (Entry: %u Type: %u) for requirement ACHIEVEMENT_CRITERIA_REQUIRE_S_EQUIPED_ITEM (%u) has unknown quality state in value1 (%u), ignored.",
                     criteria->ID, criteria->requiredType, dataType, equipped_item.item_quality);
                 return false;
             }
@@ -272,7 +267,7 @@ bool AchievementCriteriaData::IsValid(AchievementCriteriaEntry const* criteria)
         case ACHIEVEMENT_CRITERIA_DATA_TYPE_MAP_ID:
             if (!sMapStore.LookupEntry(map_id.mapId))
             {
-                sLog->outErrorDb("Table `achievement_criteria_requirement` (Entry: %u Type: %u) for requirement ACHIEVEMENT_CRITERIA_DATA_TYPE_MAP_ID (%u) has unknown map id in value1 (%u), ignored.",
+                sLog->outError(LOG_FILTER_SQL, "Table `achievement_criteria_requirement` (Entry: %u Type: %u) for requirement ACHIEVEMENT_CRITERIA_DATA_TYPE_MAP_ID (%u) has unknown map id in value1 (%u), ignored.",
                     criteria->ID, criteria->requiredType, dataType, map_id.mapId);
                 return false;
             }
@@ -280,25 +275,25 @@ bool AchievementCriteriaData::IsValid(AchievementCriteriaEntry const* criteria)
         case ACHIEVEMENT_CRITERIA_DATA_TYPE_S_PLAYER_CLASS_RACE:
             if (!classRace.class_id && !classRace.race_id)
             {
-                sLog->outErrorDb("Table `achievement_criteria_data` (Entry: %u Type: %u) for data type ACHIEVEMENT_CRITERIA_DATA_TYPE_S_PLAYER_CLASS_RACE (%u) must not have 0 in either value field, ignored.",
+                sLog->outError(LOG_FILTER_SQL, "Table `achievement_criteria_data` (Entry: %u Type: %u) for data type ACHIEVEMENT_CRITERIA_DATA_TYPE_S_PLAYER_CLASS_RACE (%u) must not have 0 in either value field, ignored.",
                     criteria->ID, criteria->requiredType, dataType);
                 return false;
             }
             if (classRace.class_id && ((1 << (classRace.class_id-1)) & CLASSMASK_ALL_PLAYABLE) == 0)
             {
-                sLog->outErrorDb("Table `achievement_criteria_data` (Entry: %u Type: %u) for data type ACHIEVEMENT_CRITERIA_DATA_TYPE_S_PLAYER_CLASS_RACE (%u) has non-existing class in value1 (%u), ignored.",
+                sLog->outError(LOG_FILTER_SQL, "Table `achievement_criteria_data` (Entry: %u Type: %u) for data type ACHIEVEMENT_CRITERIA_DATA_TYPE_S_PLAYER_CLASS_RACE (%u) has non-existing class in value1 (%u), ignored.",
                     criteria->ID, criteria->requiredType, dataType, classRace.class_id);
                 return false;
             }
             if (classRace.race_id && ((1 << (classRace.race_id-1)) & RACEMASK_ALL_PLAYABLE) == 0)
             {
-                sLog->outErrorDb("Table `achievement_criteria_data` (Entry: %u Type: %u) for data type ACHIEVEMENT_CRITERIA_DATA_TYPE_S_PLAYER_CLASS_RACE (%u) has non-existing race in value2 (%u), ignored.",
+                sLog->outError(LOG_FILTER_SQL, "Table `achievement_criteria_data` (Entry: %u Type: %u) for data type ACHIEVEMENT_CRITERIA_DATA_TYPE_S_PLAYER_CLASS_RACE (%u) has non-existing race in value2 (%u), ignored.",
                     criteria->ID, criteria->requiredType, dataType, classRace.race_id);
                 return false;
             }
             return true;
         default:
-            sLog->outErrorDb("Table `achievement_criteria_data` (Entry: %u Type: %u) has data for non-supported data type (%u), ignored.", criteria->ID, criteria->requiredType, dataType);
+            sLog->outError(LOG_FILTER_SQL, "Table `achievement_criteria_data` (Entry: %u Type: %u) has data for non-supported data type (%u), ignored.", criteria->ID, criteria->requiredType, dataType);
             return false;
     }
 }
@@ -361,10 +356,10 @@ bool AchievementCriteriaData::Meets(uint32 criteria_id, Player const* source, Un
                 return false;
             return target->getGender() == gender.gender;
         case ACHIEVEMENT_CRITERIA_DATA_TYPE_SCRIPT:
-            return sScriptMgr->OnCriteriaCheck(this, const_cast<Player*>(source), const_cast<Unit*>(target));
+            return sScriptMgr->OnCriteriaCheck(ScriptId, const_cast<Player*>(source), const_cast<Unit*>(target));
         case ACHIEVEMENT_CRITERIA_DATA_TYPE_MAP_DIFFICULTY:
             if (source->GetMap()->IsRaid())
-                if (source->GetMap()->Is25ManRaid() != (difficulty.difficulty & RAID_DIFFICULTY_MASK_25MAN))
+                if (source->GetMap()->Is25ManRaid() != ((difficulty.difficulty & RAID_DIFFICULTY_MASK_25MAN) != 0))
                     return false;
             return source->GetMap()->GetSpawnMode() >= difficulty.difficulty;
         case ACHIEVEMENT_CRITERIA_DATA_TYPE_MAP_PLAYER_COUNT:
@@ -382,7 +377,9 @@ bool AchievementCriteriaData::Meets(uint32 criteria_id, Player const* source, Un
             Battleground* bg = source->GetBattleground();
             if (!bg)
                 return false;
-            return bg->IsTeamScoreInRange(source->GetTeam() == ALLIANCE ? HORDE : ALLIANCE, bg_loss_team_score.min_score, bg_loss_team_score.max_score);
+
+            uint32 score = bg->GetTeamScore(source->GetTeamId() == TEAM_ALLIANCE ? TEAM_HORDE : TEAM_ALLIANCE);
+            return score >= bg_loss_team_score.min_score && score <= bg_loss_team_score.max_score;
         }
         case ACHIEVEMENT_CRITERIA_DATA_INSTANCE_SCRIPT:
         {
@@ -391,14 +388,14 @@ bool AchievementCriteriaData::Meets(uint32 criteria_id, Player const* source, Un
             Map* map = source->GetMap();
             if (!map->IsDungeon())
             {
-                sLog->outErrorDb("Achievement system call ACHIEVEMENT_CRITERIA_DATA_INSTANCE_SCRIPT (%u) for achievement criteria %u for non-dungeon/non-raid map %u",
+                sLog->outError(LOG_FILTER_ACHIEVEMENTSYS, "Achievement system call ACHIEVEMENT_CRITERIA_DATA_INSTANCE_SCRIPT (%u) for achievement criteria %u for non-dungeon/non-raid map %u",
                     ACHIEVEMENT_CRITERIA_DATA_INSTANCE_SCRIPT, criteria_id, map->GetId());
                     return false;
             }
             InstanceScript* instance = ((InstanceMap*)map)->GetInstanceScript();
             if (!instance)
             {
-                sLog->outErrorDb("Achievement system call ACHIEVEMENT_CRITERIA_DATA_INSTANCE_SCRIPT (%u) for achievement criteria %u for map %u but map does not have a instance script",
+                sLog->outError(LOG_FILTER_ACHIEVEMENTSYS, "Achievement system call ACHIEVEMENT_CRITERIA_DATA_INSTANCE_SCRIPT (%u) for achievement criteria %u for map %u but map does not have a instance script",
                     ACHIEVEMENT_CRITERIA_DATA_INSTANCE_SCRIPT, criteria_id, map->GetId());
                 return false;
             }
@@ -474,7 +471,7 @@ void AchievementMgr::ResetAchievementCriteria(AchievementCriteriaTypes type, uin
     {
         AchievementCriteriaEntry const* achievementCriteria = (*i);
 
-        AchievementEntry const* achievement = sAchievementStore.LookupEntry(achievementCriteria->referredAchievement);
+        AchievementEntry const* achievement = sAchievementMgr->GetAchievement(achievementCriteria->referredAchievement);
         if (!achievement)
             continue;
 
@@ -622,7 +619,7 @@ void AchievementMgr::LoadFromDB(PreparedQueryResult achievementResult, PreparedQ
             uint32 achievementid = fields[0].GetUInt16();
 
             // must not happen: cleanup at server startup in sAchievementMgr->LoadCompletedAchievements()
-            AchievementEntry const* achievement = sAchievementStore.LookupEntry(achievementid);
+            AchievementEntry const* achievement = sAchievementMgr->GetAchievement(achievementid);
             if (!achievement)
                 continue;
 
@@ -634,8 +631,7 @@ void AchievementMgr::LoadFromDB(PreparedQueryResult achievementResult, PreparedQ
             if (AchievementReward const* reward = sAchievementMgr->GetAchievementReward(achievement))
                 if (uint32 titleId = reward->titleId[Player::TeamForRace(GetPlayer()->getRace()) == ALLIANCE ? 0 : 1])
                     if (CharTitlesEntry const* titleEntry = sCharTitlesStore.LookupEntry(titleId))
-                        if (!GetPlayer()->HasTitle(titleEntry))
-                            GetPlayer()->SetTitle(titleEntry);
+                        GetPlayer()->SetTitle(titleEntry);
 
         } while (achievementResult->NextRow());
     }
@@ -649,11 +645,11 @@ void AchievementMgr::LoadFromDB(PreparedQueryResult achievementResult, PreparedQ
             uint32 counter = fields[1].GetUInt32();
             time_t date    = time_t(fields[2].GetUInt32());
 
-            AchievementCriteriaEntry const* criteria = sAchievementCriteriaStore.LookupEntry(id);
+            AchievementCriteriaEntry const* criteria = sAchievementMgr->GetAchievementCriteria(id);
             if (!criteria)
             {
                 // we will remove not existed criteria for all characters
-                sLog->outError("Non-existing achievement criteria %u data removed from table `character_achievement_progress`.", id);
+                sLog->outError(LOG_FILTER_ACHIEVEMENTSYS, "Non-existing achievement criteria %u data removed from table `character_achievement_progress`.", id);
 
                 PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_INVALID_ACHIEV_PROGRESS_CRITERIA);
 
@@ -695,10 +691,10 @@ void AchievementMgr::SendAchievementEarned(AchievementEntry const* achievement) 
         guild->BroadcastWorker(say_do, GetPlayer());
     }
 
-    if (achievement->flags & (ACHIEVEMENT_FLAG_REALM_FIRST_KILL|ACHIEVEMENT_FLAG_REALM_FIRST_REACH))
+    if (achievement->flags & (ACHIEVEMENT_FLAG_REALM_FIRST_KILL | ACHIEVEMENT_FLAG_REALM_FIRST_REACH))
     {
         // broadcast realm first reached
-        WorldPacket data(SMSG_SERVER_FIRST_ACHIEVEMENT, strlen(GetPlayer()->GetName())+1+8+4+4);
+        WorldPacket data(SMSG_SERVER_FIRST_ACHIEVEMENT, GetPlayer()->GetName().size() + 1 + 8 + 4 + 4);
         data << GetPlayer()->GetName();
         data << uint64(GetPlayer()->GetGUID());
         data << uint32(achievement->ID);
@@ -723,7 +719,7 @@ void AchievementMgr::SendAchievementEarned(AchievementEntry const* achievement) 
     WorldPacket data(SMSG_ACHIEVEMENT_EARNED, 8+4+8);
     data.append(GetPlayer()->GetPackGUID());
     data << uint32(achievement->ID);
-    data << uint32(secsToTimeBitFields(time(NULL)));
+    data.AppendPackedTime(time(NULL));
     data << uint32(0);
     GetPlayer()->SendMessageToSetInRange(&data, sWorld->getFloatConfig(CONFIG_LISTEN_RANGE_SAY), true);
 }
@@ -741,7 +737,7 @@ void AchievementMgr::SendCriteriaUpdate(AchievementCriteriaEntry const* entry, C
         data << uint32(0);
     else
         data << uint32(timedCompleted ? 0 : 1); // this are some flags, 1 is for keeping the counter at 0 in client
-    data << uint32(secsToTimeBitFields(progress->date));
+    data.AppendPackedTime(progress->date);
     data << uint32(timeElapsed);    // time elapsed in seconds
     data << uint32(0);              // unk
     GetPlayer()->SendDirectMessage(&data);
@@ -784,7 +780,7 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
     for (AchievementCriteriaEntryList::const_iterator i = achievementCriteriaList.begin(); i != achievementCriteriaList.end(); ++i)
     {
         AchievementCriteriaEntry const* achievementCriteria = (*i);
-        AchievementEntry const* achievement = sAchievementStore.LookupEntry(achievementCriteria->referredAchievement);
+        AchievementEntry const* achievement = sAchievementMgr->GetAchievement(achievementCriteria->referredAchievement);
         if (!achievement)
             continue;
 
@@ -1493,7 +1489,7 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
                 {
                     uint32 points = 0;
                     for (CompletedAchievementMap::iterator itr = m_completedAchievements.begin(); itr != m_completedAchievements.end(); ++itr)
-                        if (AchievementEntry const* pAchievement = sAchievementStore.LookupEntry(itr->first))
+                        if (AchievementEntry const* pAchievement = sAchievementMgr->GetAchievement(itr->first))
                             points += pAchievement->points;
                     SetCriteriaProgress(achievementCriteria, points, PROGRESS_SET);
                 }
@@ -1601,6 +1597,13 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
 
                 break;
             }
+            case ACHIEVEMENT_CRITERIA_TYPE_WIN_ARENA: // This also behaves like ACHIEVEMENT_CRITERIA_TYPE_WIN_RATED_ARENA
+            {
+                // Check map id requirement
+                if (miscValue1 == achievementCriteria->win_arena.mapID)
+                    SetCriteriaProgress(achievementCriteria, 1, PROGRESS_ACCUMULATE);
+                break;
+            }
             // std case: not exist in DBC, not triggered in code as result
             case ACHIEVEMENT_CRITERIA_TYPE_HIGHEST_HEALTH:
             case ACHIEVEMENT_CRITERIA_TYPE_HIGHEST_SPELLPOWER:
@@ -1611,12 +1614,10 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
                 break;
             // FIXME: not triggered in code as result, need to implement
             case ACHIEVEMENT_CRITERIA_TYPE_COMPLETE_RAID:
-            case ACHIEVEMENT_CRITERIA_TYPE_WIN_ARENA:
             case ACHIEVEMENT_CRITERIA_TYPE_PLAY_ARENA:
             case ACHIEVEMENT_CRITERIA_TYPE_OWN_RANK:
             case ACHIEVEMENT_CRITERIA_TYPE_EARNED_PVP_TITLE:
             case ACHIEVEMENT_CRITERIA_TYPE_KILL_CREATURE_TYPE:
-            case ACHIEVEMENT_CRITERIA_TYPE_TOTAL:
                 break;                                   // Not implemented yet :(
         }
 
@@ -1754,6 +1755,8 @@ bool AchievementMgr::IsCompletedCriteria(AchievementCriteriaEntry const* achieve
             return progress->counter >= achievementCriteria->use_lfg.dungeonsComplete;
         case ACHIEVEMENT_CRITERIA_TYPE_GET_KILLING_BLOWS:
             return progress->counter >= achievementCriteria->get_killing_blow.killCount;
+        case ACHIEVEMENT_CRITERIA_TYPE_WIN_ARENA:
+            return achievementCriteria->win_arena.count && progress->counter >= achievementCriteria->win_arena.count;
         // handle all statistic-only criteria here
         case ACHIEVEMENT_CRITERIA_TYPE_COMPLETE_BATTLEGROUND:
         case ACHIEVEMENT_CRITERIA_TYPE_DEATH_AT_MAP:
@@ -1936,7 +1939,7 @@ void AchievementMgr::SetCriteriaProgress(AchievementCriteriaEntry const* entry, 
     if (entry->timeLimit)
     {
         // has to exist else we wouldn't be here
-        timedCompleted = IsCompletedCriteria(entry, sAchievementStore.LookupEntry(entry->referredAchievement));
+        timedCompleted = IsCompletedCriteria(entry, sAchievementMgr->GetAchievement(entry->referredAchievement));
         // Client expects this in packet
         timeElapsed = entry->timeLimit - (timedIter->second/IN_MILLISECONDS);
 
@@ -1970,7 +1973,7 @@ void AchievementMgr::UpdateTimedAchievements(uint32 timeDiff)
             // Time is up, remove timer and reset progress
             if (itr->second <= timeDiff)
             {
-                AchievementCriteriaEntry const* entry = sAchievementCriteriaStore.LookupEntry(itr->first);
+                AchievementCriteriaEntry const* entry = sAchievementMgr->GetAchievementCriteria(itr->first);
                 RemoveCriteriaProgress(entry);
                 m_timedAchievements.erase(itr++);
             }
@@ -1991,7 +1994,7 @@ void AchievementMgr::StartTimedAchievement(AchievementCriteriaTimedTypes type, u
         if ((*i)->timerStartEvent != entry)
             continue;
 
-        AchievementEntry const* achievement = sAchievementStore.LookupEntry((*i)->referredAchievement);
+        AchievementEntry const* achievement = sAchievementMgr->GetAchievement((*i)->referredAchievement);
         if (m_timedAchievements.find((*i)->ID) == m_timedAchievements.end() && !IsCompletedCriteria(*i, achievement))
         {
             // Start the timer
@@ -2029,7 +2032,7 @@ void AchievementMgr::RemoveTimedAchievement(AchievementCriteriaTimedTypes type, 
 
 void AchievementMgr::CompletedAchievement(AchievementEntry const* achievement)
 {
-    sLog->outDetail("AchievementMgr::CompletedAchievement(%u)", achievement->ID);
+    sLog->outInfo(LOG_FILTER_ACHIEVEMENTSYS, "AchievementMgr::CompletedAchievement(%u)", achievement->ID);
 
     // disable for gamemasters with GM-mode enabled
     if (m_player->isGameMaster())
@@ -2127,12 +2130,12 @@ void AchievementMgr::BuildAllDataPacket(WorldPacket* data) const
     for (CompletedAchievementMap::const_iterator iter = m_completedAchievements.begin(); iter != m_completedAchievements.end(); ++iter)
     {
         // Skip hidden achievements
-        achievement = sAchievementStore.LookupEntry(iter->first);
+        achievement = sAchievementMgr->GetAchievement(iter->first);
         if (achievement->flags & ACHIEVEMENT_FLAG_HIDDEN)
             continue;
 
         *data << uint32(iter->first);
-        *data << uint32(secsToTimeBitFields(iter->second.date));
+        data->AppendPackedTime(iter->second.date);
     }
     *data << int32(-1);
 
@@ -2142,7 +2145,7 @@ void AchievementMgr::BuildAllDataPacket(WorldPacket* data) const
         data->appendPackGUID(iter->second.counter);
         data->append(GetPlayer()->GetPackGUID());
         *data << uint32(0);
-        *data << uint32(secsToTimeBitFields(iter->second.date));
+        data->AppendPackedTime(iter->second.date);
         *data << uint32(0);
         *data << uint32(0);
     }
@@ -2201,15 +2204,13 @@ void AchievementGlobalMgr::LoadAchievementCriteriaList()
 
     if (sAchievementCriteriaStore.GetNumRows() == 0)
     {
-        sLog->outErrorDb(">> Loaded 0 achievement criteria.");
-        sLog->outString();
+        sLog->outError(LOG_FILTER_SERVER_LOADING, ">> Loaded 0 achievement criteria.");
         return;
     }
 
     for (uint32 entryId = 0; entryId < sAchievementCriteriaStore.GetNumRows(); ++entryId)
     {
-
-        AchievementCriteriaEntry const* criteria = sAchievementCriteriaStore.LookupEntry(entryId);
+        AchievementCriteriaEntry const* criteria = sAchievementMgr->GetAchievementCriteria(entryId);
         if (!criteria)
             continue;
 
@@ -2220,8 +2221,7 @@ void AchievementGlobalMgr::LoadAchievementCriteriaList()
             m_AchievementCriteriasByTimedType[criteria->timedType].push_back(criteria);
     }
 
-    sLog->outString(">> Loaded %lu achievement criteria in %u ms", (unsigned long)m_AchievementCriteriasByType->size(), GetMSTimeDiffToNow(oldMSTime));
-    sLog->outString();
+    sLog->outInfo(LOG_FILTER_SERVER_LOADING, ">> Loaded %lu achievement criteria in %u ms", (unsigned long)m_AchievementCriteriasByType->size(), GetMSTimeDiffToNow(oldMSTime));
 }
 
 void AchievementGlobalMgr::LoadAchievementReferenceList()
@@ -2230,8 +2230,7 @@ void AchievementGlobalMgr::LoadAchievementReferenceList()
 
     if (sAchievementStore.GetNumRows() == 0)
     {
-        sLog->outString(">> Loaded 0 achievement references.");
-        sLog->outString();
+        sLog->outInfo(LOG_FILTER_SERVER_LOADING, ">> Loaded 0 achievement references.");
         return;
     }
 
@@ -2239,8 +2238,7 @@ void AchievementGlobalMgr::LoadAchievementReferenceList()
 
     for (uint32 entryId = 0; entryId < sAchievementStore.GetNumRows(); ++entryId)
     {
-
-        AchievementEntry const* achievement = sAchievementStore.LookupEntry(entryId);
+        AchievementEntry const* achievement = sAchievementMgr->GetAchievement(entryId);
         if (!achievement || !achievement->refAchievement)
             continue;
 
@@ -2248,8 +2246,11 @@ void AchievementGlobalMgr::LoadAchievementReferenceList()
         ++count;
     }
 
-    sLog->outString(">> Loaded %u achievement references in %u ms", count, GetMSTimeDiffToNow(oldMSTime));
-    sLog->outString();
+    // Once Bitten, Twice Shy (10 player) - Icecrown Citadel
+    if (AchievementEntry const* achievement = sAchievementMgr->GetAchievement(4539))
+        const_cast<AchievementEntry*>(achievement)->mapID = 631;    // Correct map requirement (currently has Ulduar)
+
+    sLog->outInfo(LOG_FILTER_SERVER_LOADING, ">> Loaded %u achievement references in %u ms", count, GetMSTimeDiffToNow(oldMSTime));
 }
 
 void AchievementGlobalMgr::LoadAchievementCriteriaData()
@@ -2262,8 +2263,7 @@ void AchievementGlobalMgr::LoadAchievementCriteriaData()
 
     if (!result)
     {
-        sLog->outString(">> Loaded 0 additional achievement criteria data. DB table `achievement_criteria_data` is empty.");
-        sLog->outString();
+        sLog->outInfo(LOG_FILTER_SERVER_LOADING, ">> Loaded 0 additional achievement criteria data. DB table `achievement_criteria_data` is empty.");
         return;
     }
 
@@ -2274,11 +2274,11 @@ void AchievementGlobalMgr::LoadAchievementCriteriaData()
         Field* fields = result->Fetch();
         uint32 criteria_id = fields[0].GetUInt32();
 
-        AchievementCriteriaEntry const* criteria = sAchievementCriteriaStore.LookupEntry(criteria_id);
+        AchievementCriteriaEntry const* criteria = sAchievementMgr->GetAchievementCriteria(criteria_id);
 
         if (!criteria)
         {
-            sLog->outErrorDb("Table `achievement_criteria_data` has data for non-existing criteria (Entry: %u), ignore.", criteria_id);
+            sLog->outError(LOG_FILTER_SQL, "Table `achievement_criteria_data` has data for non-existing criteria (Entry: %u), ignore.", criteria_id);
             continue;
         }
 
@@ -2288,7 +2288,7 @@ void AchievementGlobalMgr::LoadAchievementCriteriaData()
         if (strcmp(scriptName, "")) // not empty
         {
             if (dataType != ACHIEVEMENT_CRITERIA_DATA_TYPE_SCRIPT)
-                sLog->outErrorDb("Table `achievement_criteria_data` has ScriptName set for non-scripted data type (Entry: %u, type %u), useless data.", criteria_id, dataType);
+                sLog->outError(LOG_FILTER_SQL, "Table `achievement_criteria_data` has ScriptName set for non-scripted data type (Entry: %u, type %u), useless data.", criteria_id, dataType);
             else
                 scriptId = sObjectMgr->GetScriptId(scriptName);
         }
@@ -2314,7 +2314,7 @@ void AchievementGlobalMgr::LoadAchievementCriteriaData()
     // post loading checks
     for (uint32 entryId = 0; entryId < sAchievementCriteriaStore.GetNumRows(); ++entryId)
     {
-        AchievementCriteriaEntry const* criteria = sAchievementCriteriaStore.LookupEntry(entryId);
+        AchievementCriteriaEntry const* criteria = sAchievementMgr->GetAchievementCriteria(entryId);
         if (!criteria)
             continue;
 
@@ -2326,7 +2326,7 @@ void AchievementGlobalMgr::LoadAchievementCriteriaData()
                 break;                                      // any cases
             case ACHIEVEMENT_CRITERIA_TYPE_COMPLETE_QUEST:
             {
-                AchievementEntry const* achievement = sAchievementStore.LookupEntry(criteria->referredAchievement);
+                AchievementEntry const* achievement = sAchievementMgr->GetAchievement(criteria->referredAchievement);
                 if (!achievement)
                     continue;
 
@@ -2377,7 +2377,7 @@ void AchievementGlobalMgr::LoadAchievementCriteriaData()
             case ACHIEVEMENT_CRITERIA_TYPE_COMPLETE_DAILY_QUEST:
             case ACHIEVEMENT_CRITERIA_TYPE_USE_ITEM:        // only Children's Week achievements
             {
-                AchievementEntry const* achievement = sAchievementStore.LookupEntry(criteria->referredAchievement);
+                AchievementEntry const* achievement = sAchievementMgr->GetAchievement(criteria->referredAchievement);
                 if (!achievement)
                     continue;
                 if (achievement->categoryId != CATEGORY_CHILDRENS_WEEK)
@@ -2391,11 +2391,10 @@ void AchievementGlobalMgr::LoadAchievementCriteriaData()
         }
 
         if (!GetCriteriaDataSet(criteria) && !DisableMgr::IsDisabledFor(DISABLE_TYPE_ACHIEVEMENT_CRITERIA, entryId, NULL))
-            sLog->outErrorDb("Table `achievement_criteria_data` does not have expected data for criteria (Entry: %u Type: %u) for achievement %u.", criteria->ID, criteria->requiredType, criteria->referredAchievement);
+            sLog->outError(LOG_FILTER_SQL, "Table `achievement_criteria_data` does not have expected data for criteria (Entry: %u Type: %u) for achievement %u.", criteria->ID, criteria->requiredType, criteria->referredAchievement);
     }
 
-    sLog->outString(">> Loaded %u additional achievement criteria data in %u ms", count, GetMSTimeDiffToNow(oldMSTime));
-    sLog->outString();
+    sLog->outInfo(LOG_FILTER_SERVER_LOADING, ">> Loaded %u additional achievement criteria data in %u ms", count, GetMSTimeDiffToNow(oldMSTime));
 }
 
 void AchievementGlobalMgr::LoadCompletedAchievements()
@@ -2406,8 +2405,7 @@ void AchievementGlobalMgr::LoadCompletedAchievements()
 
     if (!result)
     {
-        sLog->outString(">> Loaded 0 completed achievements. DB table `character_achievement` is empty.");
-        sLog->outString();
+        sLog->outInfo(LOG_FILTER_SERVER_LOADING, ">> Loaded 0 realm first completed achievements. DB table `character_achievement` is empty.");
         return;
     }
 
@@ -2416,26 +2414,24 @@ void AchievementGlobalMgr::LoadCompletedAchievements()
         Field* fields = result->Fetch();
 
         uint16 achievementId = fields[0].GetUInt16();
-        const AchievementEntry* achievement = sAchievementStore.LookupEntry(achievementId);
+        const AchievementEntry* achievement = sAchievementMgr->GetAchievement(achievementId);
         if (!achievement)
         {
             // Remove non existent achievements from all characters
-            sLog->outError("Non-existing achievement %u data removed from table `character_achievement`.", achievementId);
+            sLog->outError(LOG_FILTER_ACHIEVEMENTSYS, "Non-existing achievement %u data removed from table `character_achievement`.", achievementId);
 
             PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_INVALID_ACHIEVMENT);
-
             stmt->setUInt16(0, uint16(achievementId));
-
             CharacterDatabase.Execute(stmt);
 
             continue;
         }
         else if (achievement->flags & (ACHIEVEMENT_FLAG_REALM_FIRST_REACH | ACHIEVEMENT_FLAG_REALM_FIRST_KILL))
             m_allCompletedAchievements.insert(achievementId);
-    } while (result->NextRow());
+    }
+    while (result->NextRow());
 
-    sLog->outString(">> Loaded %lu completed achievements in %u ms", (unsigned long)m_allCompletedAchievements.size(), GetMSTimeDiffToNow(oldMSTime));
-    sLog->outString();
+    sLog->outInfo(LOG_FILTER_SERVER_LOADING, ">> Loaded %lu realm first completed achievements in %u ms", (unsigned long)m_allCompletedAchievements.size(), GetMSTimeDiffToNow(oldMSTime));
 }
 
 void AchievementGlobalMgr::LoadRewards()
@@ -2444,13 +2440,12 @@ void AchievementGlobalMgr::LoadRewards()
 
     m_achievementRewards.clear();                           // need for reload case
 
-    //                                                0      1        2        3     4       5        6
+    //                                               0      1        2        3     4       5        6
     QueryResult result = WorldDatabase.Query("SELECT entry, title_A, title_H, item, sender, subject, text FROM achievement_reward");
 
     if (!result)
     {
-        sLog->outErrorDb(">> Loaded 0 achievement rewards. DB table `achievement_reward` is empty.");
-        sLog->outString();
+        sLog->outError(LOG_FILTER_SERVER_LOADING, ">> Loaded 0 achievement rewards. DB table `achievement_reward` is empty.");
         return;
     }
 
@@ -2460,10 +2455,10 @@ void AchievementGlobalMgr::LoadRewards()
     {
         Field* fields = result->Fetch();
         uint32 entry = fields[0].GetUInt32();
-        const AchievementEntry* pAchievement = sAchievementStore.LookupEntry(entry);
+        const AchievementEntry* pAchievement = GetAchievement(entry);
         if (!pAchievement)
         {
-            sLog->outErrorDb("Table `achievement_reward` has wrong achievement (Entry: %u), ignore", entry);
+            sLog->outError(LOG_FILTER_SQL, "Table `achievement_reward` has wrong achievement (Entry: %u), ignored.", entry);
             continue;
         }
 
@@ -2478,19 +2473,19 @@ void AchievementGlobalMgr::LoadRewards()
         // must be title or mail at least
         if (!reward.titleId[0] && !reward.titleId[1] && !reward.sender)
         {
-            sLog->outErrorDb("Table `achievement_reward` (Entry: %u) not have title or item reward data, ignore.", entry);
+            sLog->outError(LOG_FILTER_SQL, "Table `achievement_reward` (Entry: %u) does not have title or item reward data, ignored.", entry);
             continue;
         }
 
         if (pAchievement->requiredFaction == ACHIEVEMENT_FACTION_ANY && ((reward.titleId[0] == 0) != (reward.titleId[1] == 0)))
-            sLog->outErrorDb("Table `achievement_reward` (Entry: %u) has title (A: %u H: %u) for only one team.", entry, reward.titleId[0], reward.titleId[1]);
+            sLog->outError(LOG_FILTER_SQL, "Table `achievement_reward` (Entry: %u) has title (A: %u H: %u) for only one team.", entry, reward.titleId[0], reward.titleId[1]);
 
         if (reward.titleId[0])
         {
             CharTitlesEntry const* titleEntry = sCharTitlesStore.LookupEntry(reward.titleId[0]);
             if (!titleEntry)
             {
-                sLog->outErrorDb("Table `achievement_reward` (Entry: %u) has invalid title id (%u) in `title_A`, set to 0", entry, reward.titleId[0]);
+                sLog->outError(LOG_FILTER_SQL, "Table `achievement_reward` (Entry: %u) has invalid title id (%u) in `title_A`, set to 0", entry, reward.titleId[0]);
                 reward.titleId[0] = 0;
             }
         }
@@ -2500,7 +2495,7 @@ void AchievementGlobalMgr::LoadRewards()
             CharTitlesEntry const* titleEntry = sCharTitlesStore.LookupEntry(reward.titleId[1]);
             if (!titleEntry)
             {
-                sLog->outErrorDb("Table `achievement_reward` (Entry: %u) has invalid title id (%u) in `title_H`, set to 0", entry, reward.titleId[1]);
+                sLog->outError(LOG_FILTER_SQL, "Table `achievement_reward` (Entry: %u) has invalid title id (%u) in `title_H`, set to 0", entry, reward.titleId[1]);
                 reward.titleId[1] = 0;
             }
         }
@@ -2510,39 +2505,37 @@ void AchievementGlobalMgr::LoadRewards()
         {
             if (!sObjectMgr->GetCreatureTemplate(reward.sender))
             {
-                sLog->outErrorDb("Table `achievement_reward` (Entry: %u) has invalid creature entry %u as sender, mail reward skipped.", entry, reward.sender);
+                sLog->outError(LOG_FILTER_SQL, "Table `achievement_reward` (Entry: %u) has invalid creature entry %u as sender, mail reward skipped.", entry, reward.sender);
                 reward.sender = 0;
             }
         }
         else
         {
             if (reward.itemId)
-                sLog->outErrorDb("Table `achievement_reward` (Entry: %u) does not have sender data but has item reward, item will not be rewarded.", entry);
+                sLog->outError(LOG_FILTER_SQL, "Table `achievement_reward` (Entry: %u) does not have sender data but has item reward, item will not be rewarded.", entry);
 
             if (!reward.subject.empty())
-                sLog->outErrorDb("Table `achievement_reward` (Entry: %u) does not have sender data but has mail subject.", entry);
+                sLog->outError(LOG_FILTER_SQL, "Table `achievement_reward` (Entry: %u) does not have sender data but has mail subject.", entry);
 
             if (!reward.text.empty())
-                sLog->outErrorDb("Table `achievement_reward` (Entry: %u) does not have sender data but has mail text.", entry);
+                sLog->outError(LOG_FILTER_SQL, "Table `achievement_reward` (Entry: %u) does not have sender data but has mail text.", entry);
         }
 
         if (reward.itemId)
         {
             if (!sObjectMgr->GetItemTemplate(reward.itemId))
             {
-                sLog->outErrorDb("Table `achievement_reward` (Entry: %u) has invalid item id %u, reward mail will not contain item.", entry, reward.itemId);
+                sLog->outError(LOG_FILTER_SQL, "Table `achievement_reward` (Entry: %u) has invalid item id %u, reward mail will not contain item.", entry, reward.itemId);
                 reward.itemId = 0;
             }
         }
 
         m_achievementRewards[entry] = reward;
         ++count;
-
     }
     while (result->NextRow());
 
-    sLog->outString(">> Loaded %u achievement rewards in %u ms", count, GetMSTimeDiffToNow(oldMSTime));
-    sLog->outString();
+    sLog->outInfo(LOG_FILTER_SERVER_LOADING, ">> Loaded %u achievement rewards in %u ms", count, GetMSTimeDiffToNow(oldMSTime));
 }
 
 void AchievementGlobalMgr::LoadRewardLocales()
@@ -2557,8 +2550,7 @@ void AchievementGlobalMgr::LoadRewardLocales()
 
     if (!result)
     {
-        sLog->outString(">> Loaded 0 achievement reward locale strings.  DB table `locales_achievement_reward` is empty");
-        sLog->outString();
+        sLog->outInfo(LOG_FILTER_SERVER_LOADING, ">> Loaded 0 achievement reward locale strings.  DB table `locales_achievement_reward` is empty");
         return;
     }
 
@@ -2570,7 +2562,7 @@ void AchievementGlobalMgr::LoadRewardLocales()
 
         if (m_achievementRewards.find(entry) == m_achievementRewards.end())
         {
-            sLog->outErrorDb("Table `locales_achievement_reward` (Entry: %u) has locale strings for non-existing achievement reward.", entry);
+            sLog->outError(LOG_FILTER_SQL, "Table `locales_achievement_reward` (Entry: %u) has locale strings for non-existing achievement reward.", entry);
             continue;
         }
 
@@ -2582,8 +2574,18 @@ void AchievementGlobalMgr::LoadRewardLocales()
             ObjectMgr::AddLocaleString(fields[1 + 2 * (i - 1)].GetString(), locale, data.subject);
             ObjectMgr::AddLocaleString(fields[1 + 2 * (i - 1) + 1].GetString(), locale, data.text);
         }
-    } while (result->NextRow());
+    }
+    while (result->NextRow());
 
-    sLog->outString(">> Loaded %lu achievement reward locale strings in %u ms", (unsigned long)m_achievementRewardLocales.size(), GetMSTimeDiffToNow(oldMSTime));
-    sLog->outString();
+    sLog->outInfo(LOG_FILTER_SERVER_LOADING, ">> Loaded %lu achievement reward locale strings in %u ms", (unsigned long)m_achievementRewardLocales.size(), GetMSTimeDiffToNow(oldMSTime));
+}
+
+AchievementEntry const* AchievementGlobalMgr::GetAchievement(uint32 achievementId) const
+{
+    return sAchievementStore.LookupEntry(achievementId);
+}
+
+AchievementCriteriaEntry const* AchievementGlobalMgr::GetAchievementCriteria(uint32 criteriaId) const
+{
+    return sAchievementCriteriaStore.LookupEntry(criteriaId);
 }

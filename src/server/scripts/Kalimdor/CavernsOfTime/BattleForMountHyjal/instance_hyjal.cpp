@@ -23,15 +23,19 @@ SDComment: Instance Data Scripts and functions to acquire mobs and set encounter
 SDCategory: Caverns of Time, Mount Hyjal
 EndScriptData */
 
-#include "ScriptPCH.h"
-#include "hyjal.h"
+#include "ScriptMgr.h"
+#include "InstanceScript.h"
+#include "ScriptedCreature.h"
 #include "hyjal_trash.h"
+#include "Player.h"
+#include "WorldPacket.h"
+#include "Opcodes.h"
 
-enum eEnums
+enum Misc
 {
     MAX_ENCOUNTER       = 5,
 
-    GO_ANCIENT_GEM      = 185557
+    GO_ANCIENT_GEM      = 185557,
 };
 /* Battle of Mount Hyjal encounters:
 0 - Rage Winterchill event
@@ -155,7 +159,7 @@ public:
             }
         }
 
-        uint64 GetData64(uint32 identifier)
+        uint64 GetData64(uint32 identifier) const
         {
             switch (identifier)
             {
@@ -272,7 +276,7 @@ public:
                     break;
             }
 
-             sLog->outDebug(LOG_FILTER_TSCR, "TSCR: Instance Hyjal: Instance data updated for event %u (Data=%u)", type, data);
+             sLog->outDebug(LOG_FILTER_TSCR, "Instance Hyjal: Instance data updated for event %u (Data=%u)", type, data);
 
             if (data == DONE)
             {
@@ -292,7 +296,7 @@ public:
 
         }
 
-        uint32 GetData(uint32 type)
+        uint32 GetData(uint32 type) const
         {
             switch (type)
             {

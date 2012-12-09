@@ -23,7 +23,9 @@ SDComment:
 SDCategory: Hellfire Citadel, Magtheridon's lair
 EndScriptData */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
+#include "InstanceScript.h"
 #include "magtheridons_lair.h"
 
 enum eSpells
@@ -121,7 +123,7 @@ class instance_magtheridons_lair : public InstanceMapScript
                 }
             }
 
-            uint64 GetData64(uint32 type)
+            uint64 GetData64(uint32 type) const
             {
                 switch (type)
                 {
@@ -209,7 +211,7 @@ class instance_magtheridons_lair : public InstanceMapScript
                 }
             }
 
-            uint32 GetData(uint32 type)
+            uint32 GetData(uint32 type) const
             {
                 if (type == DATA_MAGTHERIDON_EVENT)
                     return m_auiEncounter[0];

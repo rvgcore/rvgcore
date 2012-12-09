@@ -15,16 +15,21 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
+#include "SpellScript.h"
+#include "GridNotifiers.h"
+#include "CombatAI.h"
 #include "naxxramas.h"
 
 enum Yells
 {
-    SAY_SPEECH                  = -1533040,
-    SAY_KILL                    = -1533041,
-    SAY_DEATH                   = -1533042,
-    SAY_TELEPORT                = -1533043
+    SAY_SPEECH                  = 0,
+    SAY_KILL                    = 1,
+    SAY_DEATH                   = 2,
+    SAY_TELEPORT                = 3
 };
+
 //Gothik
 enum Spells
 {
@@ -36,8 +41,11 @@ enum Spells
     SPELL_INFORM_LIVE_RIDER     = 27935,
     SPELL_INFORM_DEAD_TRAINEE   = 27915,
     SPELL_INFORM_DEAD_KNIGHT    = 27931,
-    SPELL_INFORM_DEAD_RIDER     = 27937
+    SPELL_INFORM_DEAD_RIDER     = 27937,
+
+    SPELL_SHADOW_MARK           = 27825
 };
+
 enum Creatures
 {
     MOB_LIVE_TRAINEE    = 16124,
@@ -192,7 +200,7 @@ class boss_gothik : public CreatureScript
 
                 if (LiveTriggerGUID.size() < POS_LIVE || DeadTriggerGUID.size() < POS_DEAD)
                 {
-                    sLog->outError("Script Gothik: cannot summon triggers!");
+                    sLog->outError(LOG_FILTER_TSCR, "Script Gothik: cannot summon triggers!");
                     EnterEvadeMode();
                     return;
                 }
@@ -201,7 +209,7 @@ class boss_gothik : public CreatureScript
                 waveCount = 0;
                 events.ScheduleEvent(EVENT_SUMMON, 30000);
                 DoTeleportTo(PosPlatform);
-                DoScriptText(SAY_SPEECH, me);
+                Talk(SAY_SPEECH);
                 if (instance)
                     instance->SetData(DATA_GOTHIK_GATE, GO_STATE_READY);
             }
@@ -231,7 +239,7 @@ class boss_gothik : public CreatureScript
             void KilledUnit(Unit* /*victim*/)
             {
                 if (!(rand()%5))
-                    DoScriptText(SAY_KILL, me);
+                    Talk(SAY_KILL);
             }
 
             void JustDied(Unit* /*killer*/)
@@ -239,7 +247,7 @@ class boss_gothik : public CreatureScript
                 LiveTriggerGUID.clear();
                 DeadTriggerGUID.clear();
                 _JustDied();
-                DoScriptText(SAY_DEATH, me);
+                Talk(SAY_DEATH);
                 if (instance)
                     instance->SetData(DATA_GOTHIK_GATE, GO_STATE_ACTIVE);
             }
@@ -306,15 +314,14 @@ class boss_gothik : public CreatureScript
 
             bool CheckGroupSplitted()
             {
-                bool checklife = false;
-                bool checkdead = false;
-
                 Map* map = me->GetMap();
                 if (map && map->IsDungeon())
                 {
                     Map::PlayerList const &PlayerList = map->GetPlayers();
                     if (!PlayerList.isEmpty())
                     {
+                        bool checklife = false;
+                        bool checkdead = false;
                         for (Map::PlayerList::const_iterator i = PlayerList.begin(); i != PlayerList.end(); ++i)
                         {
                             if (i->getSource() && i->getSource()->isAlive() &&
@@ -445,7 +452,7 @@ class boss_gothik : public CreatureScript
                             else
                             {
                                 phaseTwo = true;
-                                DoScriptText(SAY_TELEPORT, me);
+                                Talk(SAY_TELEPORT);
                                 DoTeleportTo(PosGroundLiveSide);
                                 me->SetReactState(REACT_AGGRESSIVE);
                                 DummyEntryCheckPredicate pred;
@@ -585,8 +592,35 @@ class mob_gothik_minion : public CreatureScript
         }
 };
 
+class spell_gothik_shadow_bolt_volley : public SpellScriptLoader
+{
+    public:
+        spell_gothik_shadow_bolt_volley() : SpellScriptLoader("spell_gothik_shadow_bolt_volley") { }
+
+        class spell_gothik_shadow_bolt_volley_SpellScript : public SpellScript
+        {
+            PrepareSpellScript(spell_gothik_shadow_bolt_volley_SpellScript);
+
+            void FilterTargets(std::list<WorldObject*>& targets)
+            {
+                targets.remove_if(Trinity::UnitAuraCheck(false, SPELL_SHADOW_MARK));
+            }
+
+            void Register()
+            {
+                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_gothik_shadow_bolt_volley_SpellScript::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
+            }
+        };
+
+        SpellScript* GetSpellScript() const
+        {
+            return new spell_gothik_shadow_bolt_volley_SpellScript();
+        }
+};
+
 void AddSC_boss_gothik()
 {
     new boss_gothik();
     new mob_gothik_minion();
+    new spell_gothik_shadow_bolt_volley();
 }

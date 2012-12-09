@@ -23,7 +23,8 @@ SDComment: Missing reset function after killing a boss for Ohgan, Thekal.
 SDCategory: Zul'Gurub
 EndScriptData */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "InstanceScript.h"
 #include "zulgurub.h"
 
 class instance_zulgurub : public InstanceMapScript
@@ -112,7 +113,7 @@ class instance_zulgurub : public InstanceMapScript
                 }
             }
 
-            uint32 GetData(uint32 uiType)
+            uint32 GetData(uint32 uiType) const
             {
                 switch (uiType)
                 {
@@ -136,7 +137,7 @@ class instance_zulgurub : public InstanceMapScript
                 return 0;
             }
 
-            uint64 GetData64(uint32 uiData)
+            uint64 GetData64(uint32 uiData) const
             {
                 switch (uiData)
                 {

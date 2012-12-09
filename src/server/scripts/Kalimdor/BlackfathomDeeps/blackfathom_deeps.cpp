@@ -15,11 +15,14 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
+#include "ScriptedGossip.h"
 #include "blackfathom_deeps.h"
 #include "ScriptedEscortAI.h"
+#include "Player.h"
 
-enum eSpells
+enum Spells
 {
     SPELL_BLESSING_OF_BLACKFATHOM                           = 8733,
     SPELL_RAVAGE                                            = 8391,
@@ -94,11 +97,11 @@ public:
         uint32 frostNovaTimer;
         uint32 frostBoltVolleyTimer;
 
-        bool bFlee;
+        bool Flee;
 
         void Reset()
         {
-            bFlee = false;
+            Flee = false;
 
             ravageTimer           = urand(5000, 8000);
             frostNovaTimer        = urand(9000, 12000);
@@ -140,7 +143,7 @@ public:
                 {
                     if (ravageTimer <= diff)
                     {
-                        DoCast(me->getVictim(), SPELL_RAVAGE);
+                        DoCastVictim(SPELL_RAVAGE);
                         ravageTimer = urand(9000, 14000);
                     } else ravageTimer -= diff;
                     break;
@@ -148,9 +151,9 @@ public:
                 case NPC_MURKSHALLOW_SOFTSHELL:
                 case NPC_BARBED_CRUSTACEAN:
                 {
-                    if (!bFlee && HealthBelowPct(15))
+                    if (!Flee && HealthBelowPct(15))
                     {
-                        bFlee = true;
+                        Flee = true;
                         me->DoFleeToGetAssistance();
                     }
                     break;
@@ -160,10 +163,7 @@ public:
                     if (frostBoltVolleyTimer <= diff)
                     {
                         if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0))
-                        {
-                            if (target)
-                                DoCast(target, SPELL_FROST_BOLT_VOLLEY);
-                        }
+                            DoCast(target, SPELL_FROST_BOLT_VOLLEY);
                         frostBoltVolleyTimer = urand(5000, 8000);
                     }
                     else frostBoltVolleyTimer -= diff;
@@ -190,10 +190,10 @@ public:
     };
 };
 
-enum eMorridune
+enum Morridune
 {
-    SAY_MORRIDUNE_1 = -1048003,
-    SAY_MORRIDUNE_2 = -1048004
+    SAY_MORRIDUNE_1 = 0,
+    SAY_MORRIDUNE_2 = 1
 };
 
 class npc_morridune : public CreatureScript
@@ -231,7 +231,7 @@ public:
     {
         npc_morriduneAI(Creature* creature) : npc_escortAI(creature)
         {
-            DoScriptText(SAY_MORRIDUNE_1, creature);
+            creature->AI()->Talk(SAY_MORRIDUNE_1);
             me->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
             Start(false, false, 0);
         }
@@ -245,7 +245,7 @@ public:
                     me->SetOrientation(1.775791f);
                     me->SendMovementFlagUpdate();
                     me->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
-                    DoScriptText(SAY_MORRIDUNE_2, me);
+                    Talk(SAY_MORRIDUNE_2);
                     break;
             }
         }

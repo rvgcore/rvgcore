@@ -23,11 +23,12 @@ SDComment:
 SDCategory: Scarlet Monastery
 EndScriptData */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
 
 enum eEnums
 {
-    SAY_AGGRO                       = -1189021,
+    SAY_AGGRO                       = 0,
     SPELL_SUMMONSCARLETHOUND        = 17164,
     SPELL_BLOODLUST                 = 6742
 };
@@ -55,7 +56,7 @@ public:
 
         void EnterCombat(Unit* /*who*/)
         {
-            DoScriptText(SAY_AGGRO, me);
+            Talk(SAY_AGGRO);
         }
 
         void UpdateAI(const uint32 diff)

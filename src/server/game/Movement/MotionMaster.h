@@ -51,7 +51,7 @@ enum MovementGeneratorType
     FOLLOW_MOTION_TYPE    = 14,
     ROTATE_MOTION_TYPE    = 15,
     EFFECT_MOTION_TYPE    = 16,
-    NULL_MOTION_TYPE      = 17,
+    NULL_MOTION_TYPE      = 17
 };
 
 enum MovementSlot
@@ -59,7 +59,7 @@ enum MovementSlot
     MOTION_SLOT_IDLE,
     MOTION_SLOT_ACTIVE,
     MOTION_SLOT_CONTROLLED,
-    MAX_MOTION_SLOT,
+    MAX_MOTION_SLOT
 };
 
 enum MMCleanFlag
@@ -72,7 +72,7 @@ enum MMCleanFlag
 enum RotateDirection
 {
     ROTATE_DIRECTION_LEFT,
-    ROTATE_DIRECTION_RIGHT,
+    ROTATE_DIRECTION_RIGHT
 };
 
 // assume it is 25 yard per 0.6 second
@@ -157,13 +157,15 @@ class MotionMaster //: private std::stack<MovementGenerator *>
         void MovePoint(uint32 id, float x, float y, float z);
 
         // These two movement types should only be used with creatures having landing/takeoff animations
-        void MoveLand(uint32 id, Position const& pos, float speed);
-        void MoveTakeoff(uint32 id, Position const& pos, float speed);
+        void MoveLand(uint32 id, Position const& pos);
+        void MoveTakeoff(uint32 id, Position const& pos);
 
         void MoveCharge(float x, float y, float z, float speed = SPEED_CHARGE, uint32 id = EVENT_CHARGE);
         void MoveKnockbackFrom(float srcX, float srcY, float speedXY, float speedZ);
         void MoveJumpTo(float angle, float speedXY, float speedZ);
-        void MoveJump(float x, float y, float z, float speedXY, float speedZ, uint32 id = 0);
+        void MoveJump(Position const& pos, float speedXY, float speedZ, uint32 id = EVENT_JUMP)
+            { MoveJump(pos.m_positionX, pos.m_positionY, pos.m_positionZ, speedXY, speedZ, id); };
+        void MoveJump(float x, float y, float z, float speedXY, float speedZ, uint32 id = EVENT_JUMP);
         void MoveFall(uint32 id = 0);
 
         void MoveSeekAssistance(float x, float y, float z);

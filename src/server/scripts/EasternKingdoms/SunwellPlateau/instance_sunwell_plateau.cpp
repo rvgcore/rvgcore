@@ -23,8 +23,10 @@ SDComment: VERIFY SCRIPT
 SDCategory: Sunwell_Plateau
 EndScriptData */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "InstanceScript.h"
 #include "sunwell_plateau.h"
+#include "Player.h"
 
 #define MAX_ENCOUNTER 6
 
@@ -120,7 +122,7 @@ public:
             return false;
         }
 
-        Player* GetPlayerInMap()
+        Player const * GetPlayerInMap() const
         {
             Map::PlayerList const& players = instance->GetPlayers();
 
@@ -133,8 +135,9 @@ public:
                             return player;
                 }
             }
+            else
+                sLog->outDebug(LOG_FILTER_TSCR, "Instance Sunwell Plateau: GetPlayerInMap, but PlayerList is empty!");
 
-            sLog->outDebug(LOG_FILTER_TSCR, "TSCR: Instance Sunwell Plateau: GetPlayerInMap, but PlayerList is empty!");
             return NULL;
         }
 
@@ -179,7 +182,7 @@ public:
             }
         }
 
-        uint32 GetData(uint32 id)
+        uint32 GetData(uint32 id) const
         {
             switch (id)
             {
@@ -193,7 +196,7 @@ public:
             return 0;
         }
 
-        uint64 GetData64(uint32 id)
+        uint64 GetData64(uint32 id) const
         {
             switch (id)
             {
@@ -212,8 +215,8 @@ public:
                 case DATA_ANVEENA:              return Anveena;
                 case DATA_KALECGOS_KJ:          return KalecgosKJ;
                 case DATA_PLAYER_GUID:
-                    Player* Target = GetPlayerInMap();
-                    return Target->GetGUID();
+                    Player const* target = GetPlayerInMap();
+                    return target ? target->GetGUID() : 0;
             }
             return 0;
         }
@@ -275,17 +278,12 @@ public:
             std::ostringstream stream;
             stream << m_auiEncounter[0] << ' '  << m_auiEncounter[1] << ' '  << m_auiEncounter[2] << ' '  << m_auiEncounter[3] << ' '
                 << m_auiEncounter[4] << ' '  << m_auiEncounter[5];
-            char* out = new char[stream.str().length() + 1];
-            strcpy(out, stream.str().c_str());
-            if (out)
-            {
-                OUT_SAVE_INST_DATA_COMPLETE;
-                return out;
-            }
-            return NULL;
+
+            OUT_SAVE_INST_DATA_COMPLETE;
+            return stream.str();
         }
 
-        void Load(const char* in)
+        void Load(char const* in)
         {
             if (!in)
             {
@@ -303,7 +301,6 @@ public:
             OUT_LOAD_INST_DATA_COMPLETE;
         }
     };
-
 };
 
 void AddSC_instance_sunwell_plateau()

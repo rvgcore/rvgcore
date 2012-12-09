@@ -28,7 +28,6 @@
 
 #include "GridDefines.h"
 #include "Object.h"
-#include "Player.h"
 
 #include <set>
 
@@ -74,12 +73,11 @@ class HashMapHolder
         static LockType* GetLock() { return &i_lock; }
 
     private:
-
         //Non instanceable only static
         HashMapHolder() {}
 
         static LockType i_lock;
-        static MapType  m_objectMap;
+        static MapType m_objectMap;
 };
 
 class ObjectAccessor
@@ -117,13 +115,7 @@ class ObjectAccessor
         }
 
         // Player may be not in world while in ObjectAccessor
-        static Player* GetObjectInWorld(uint64 guid, Player* /*typeSpecifier*/)
-        {
-            Player* player = HashMapHolder<Player>::Find(guid);
-            if (player && player->IsInWorld())
-                return player;
-            return NULL;
-        }
+        static Player* GetObjectInWorld(uint64 guid, Player* /*typeSpecifier*/);
 
         static Unit* GetObjectInWorld(uint64 guid, Unit* /*typeSpecifier*/)
         {
@@ -155,14 +147,14 @@ class ObjectAccessor
             CellCoord p = Trinity::ComputeCellCoord(x, y);
             if (!p.IsCoordValid())
             {
-                sLog->outError("ObjectAccessor::GetObjectInWorld: invalid coordinates supplied X:%f Y:%f grid cell [%u:%u]", x, y, p.x_coord, p.y_coord);
+                sLog->outError(LOG_FILTER_GENERAL, "ObjectAccessor::GetObjectInWorld: invalid coordinates supplied X:%f Y:%f grid cell [%u:%u]", x, y, p.x_coord, p.y_coord);
                 return NULL;
             }
 
             CellCoord q = Trinity::ComputeCellCoord(obj->GetPositionX(), obj->GetPositionY());
             if (!q.IsCoordValid())
             {
-                sLog->outError("ObjectAccessor::GetObjecInWorld: object (GUID: %u TypeId: %u) has invalid coordinates X:%f Y:%f grid cell [%u:%u]", obj->GetGUIDLow(), obj->GetTypeId(), obj->GetPositionX(), obj->GetPositionY(), q.x_coord, q.y_coord);
+                sLog->outError(LOG_FILTER_GENERAL, "ObjectAccessor::GetObjecInWorld: object (GUID: %u TypeId: %u) has invalid coordinates X:%f Y:%f grid cell [%u:%u]", obj->GetGUIDLow(), obj->GetTypeId(), obj->GetPositionX(), obj->GetPositionY(), q.x_coord, q.y_coord);
                 return NULL;
             }
 
@@ -191,8 +183,9 @@ class ObjectAccessor
         // ACCESS LIKE THAT IS NOT THREAD SAFE
         static Pet* FindPet(uint64);
         static Player* FindPlayer(uint64);
+        static Creature* FindCreature(uint64);
         static Unit* FindUnit(uint64);
-        static Player* FindPlayerByName(const char* name);
+        static Player* FindPlayerByName(std::string const& name);
 
         // when using this, you must use the hashmapholder's lock
         static HashMapHolder<Player>::MapType const& GetPlayers()

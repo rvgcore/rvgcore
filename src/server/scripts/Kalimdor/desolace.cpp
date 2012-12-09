@@ -30,15 +30,17 @@ npc_dalinda_malem
 go_demon_portal
 EndContentData */
 
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
+#include "ScriptedGossip.h"
 #include "ScriptedEscortAI.h"
+#include "Player.h"
+#include "SpellInfo.h"
 
-enum eDyingKodo
+enum DyingKodo
 {
     // signed for 9999
-    SAY_SMEED_HOME_1                = -1000348,
-    SAY_SMEED_HOME_2                = -1000349,
-    SAY_SMEED_HOME_3                = -1000350,
+    SAY_SMEED_HOME                  = 0,
 
     QUEST_KODO                      = 5561,
 
@@ -114,11 +116,11 @@ public:
     {
         npc_aged_dying_ancient_kodoAI(Creature* creature) : ScriptedAI(creature) { Reset(); }
 
-        uint32 m_uiDespawnTimer;
+        uint32 DespawnTimer;
 
         void Reset()
         {
-            m_uiDespawnTimer = 0;
+            DespawnTimer = 0;
         }
 
         void MoveInLineOfSight(Unit* who)
@@ -130,7 +132,8 @@ public:
 
                 if (me->IsWithinDistInMap(who, 10.0f))
                 {
-                    DoScriptText(RAND(SAY_SMEED_HOME_1, SAY_SMEED_HOME_2, SAY_SMEED_HOME_3), who);
+                    if (Creature* talker = who->ToCreature())
+                        talker->AI()->Talk(SAY_SMEED_HOME);
 
                     //spell have no implemented effect (dummy), so useful to notify spellHit
                     DoCast(me, SPELL_KODO_KOMBO_GOSSIP, true);
@@ -143,14 +146,14 @@ public:
             if (pSpell->Id == SPELL_KODO_KOMBO_GOSSIP)
             {
                 me->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
-                m_uiDespawnTimer = 60000;
+                DespawnTimer = 60000;
             }
         }
 
         void UpdateAI(const uint32 diff)
         {
             //timer should always be == 0 unless we already updated entry of creature. Then not expect this updated to ever be in combat.
-            if (m_uiDespawnTimer && m_uiDespawnTimer <= diff)
+            if (DespawnTimer && DespawnTimer <= diff)
             {
                 if (!me->getVictim() && me->isAlive())
                 {
@@ -159,7 +162,7 @@ public:
                     me->Respawn();
                     return;
                 }
-            } else m_uiDespawnTimer -= diff;
+            } else DespawnTimer -= diff;
 
             if (!UpdateVictim())
                 return;
@@ -175,7 +178,7 @@ public:
 ## Hand of Iruxos
 ######*/
 
-enum
+enum Iruxos
 {
     QUEST_HAND_IRUXOS   = 5381,
     NPC_DEMON_SPIRIT    = 11876,
@@ -199,7 +202,10 @@ class go_iruxos : public GameObjectScript
 ## npc_dalinda_malem. Quest 1440
 ######*/
 
-#define QUEST_RETURN_TO_VAHLARRIEL     1440
+enum Dalinda
+{
+    QUEST_RETURN_TO_VAHLARRIEL      = 1440
+};
 
 class npc_dalinda : public CreatureScript
 {
@@ -255,9 +261,9 @@ public:
             return;
         }
 
-        void UpdateAI(const uint32 uiDiff)
+        void UpdateAI(const uint32 Diff)
         {
-            npc_escortAI::UpdateAI(uiDiff);
+            npc_escortAI::UpdateAI(Diff);
             if (!UpdateVictim())
                 return;
             DoMeleeAttackIfReady();

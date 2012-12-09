@@ -29,12 +29,14 @@ class PointMovementGenerator : public MovementGeneratorMedium< T, PointMovementG
         PointMovementGenerator(uint32 _id, float _x, float _y, float _z, float _speed = 0.0f) : id(_id),
             i_x(_x), i_y(_y), i_z(_z), speed(_speed) {}
 
-        void Initialize(T &);
-        void Finalize(T &);
-        void Reset(T &);
-        bool Update(T &, const uint32 &);
+        void DoInitialize(T &);
+        void DoFinalize(T &);
+        void DoReset(T &);
+        bool DoUpdate(T &, uint32);
 
         void MovementInform(T &);
+
+        void unitSpeedChanged() { i_recalculateSpeed = true; }
 
         MovementGeneratorType GetMovementGeneratorType() { return POINT_MOTION_TYPE; }
 
@@ -43,6 +45,7 @@ class PointMovementGenerator : public MovementGeneratorMedium< T, PointMovementG
         uint32 id;
         float i_x, i_y, i_z;
         float speed;
+        bool i_recalculateSpeed;
 };
 
 class AssistanceMovementGenerator : public PointMovementGenerator<Creature>
@@ -63,7 +66,7 @@ class EffectMovementGenerator : public MovementGenerator
         void Initialize(Unit &) {}
         void Finalize(Unit &unit);
         void Reset(Unit &) {}
-        bool Update(Unit &u, const uint32&);
+        bool Update(Unit &u, uint32);
         MovementGeneratorType GetMovementGeneratorType() { return EFFECT_MOTION_TYPE; }
     private:
         uint32 m_Id;

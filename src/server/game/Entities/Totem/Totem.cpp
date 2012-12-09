@@ -17,13 +17,14 @@
  */
 
 #include "Totem.h"
-#include "WorldPacket.h"
 #include "Log.h"
 #include "Group.h"
-#include "Player.h"
 #include "ObjectMgr.h"
+#include "Opcodes.h"
+#include "Player.h"
 #include "SpellMgr.h"
 #include "SpellInfo.h"
+#include "WorldPacket.h"
 
 Totem::Totem(SummonPropertiesEntry const* properties, Unit* owner) : Minion(properties, owner, false)
 {
@@ -86,7 +87,7 @@ void Totem::InitStats(uint32 duration)
 
 void Totem::InitSummon()
 {
-    if (m_type == TOTEM_PASSIVE)
+    if (m_type == TOTEM_PASSIVE && GetSpell())
     {
         CastSpell(this, GetSpell(), true);
     }
@@ -96,10 +97,16 @@ void Totem::InitSummon()
         CastSpell(this, GetSpell(1), true);
 }
 
-void Totem::UnSummon()
+void Totem::UnSummon(uint32 msTime)
 {
+    if (msTime)
+    {
+        m_Events.AddEvent(new ForcedUnsummonDelayEvent(*this), m_Events.CalculateTime(msTime));
+        return;
+    }
+
     CombatStop();
-    RemoveAurasDueToSpell(GetSpell());
+    RemoveAurasDueToSpell(GetSpell(), GetGUID());
 
     // clear owner's totem slot
     for (int i = SUMMON_SLOT_TOTEM; i < MAX_TOTEM_SLOT; ++i)
@@ -111,7 +118,11 @@ void Totem::UnSummon()
         }
     }
 
-    m_owner->RemoveAurasDueToSpell(GetSpell());
+    m_owner->RemoveAurasDueToSpell(GetSpell(), GetGUID());
+
+    // Remove Sentry Totem Aura
+    if (GetEntry() == SENTRY_TOTEM_ENTRY)
+        m_owner->RemoveAurasDueToSpell(SENTRY_TOTEM_SPELLID);
 
     //remove aura all party members too
     if (Player* owner = m_owner->ToPlayer())
@@ -127,7 +138,7 @@ void Totem::UnSummon()
             {
                 Player* target = itr->getSource();
                 if (target && group->SameSubGroup(owner, target))
-                    target->RemoveAurasDueToSpell(GetSpell());
+                    target->RemoveAurasDueToSpell(GetSpell(), GetGUID());
             }
         }
     }

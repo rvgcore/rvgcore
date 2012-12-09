@@ -32,6 +32,7 @@
 #include "ScriptMgr.h"
 #include "GameObjectAI.h"
 #include "SpellAuraEffects.h"
+#include "Player.h"
 
 void WorldSession::HandleClientCastFlags(WorldPacket& recvPacket, uint8 castFlags, SpellCastTargets& targets)
 {
@@ -50,15 +51,8 @@ void WorldSession::HandleClientCastFlags(WorldPacket& recvPacket, uint8 castFlag
         recvPacket >> hasMovementData;
         if (hasMovementData)
         {
-            recvPacket.rfinish();
-            // movement packet for caster of the spell
-            /*recvPacket.read_skip<uint32>(); // MSG_MOVE_STOP - hardcoded in client
-            uint64 guid;
-            recvPacket.readPackGUID(guid);
-
-            MovementInfo movementInfo;
-            movementInfo.guid = guid;
-            ReadMovementInfo(recvPacket, &movementInfo);*/
+            recvPacket.SetOpcode(recvPacket.read<uint32>());
+            HandleMovementOpcodes(recvPacket);
         }
     }
 }
@@ -99,7 +93,7 @@ void WorldSession::HandleUseItemOpcode(WorldPacket& recvPacket)
         return;
     }
 
-    sLog->outDetail("WORLD: CMSG_USE_ITEM packet, bagIndex: %u, slot: %u, castCount: %u, spellId: %u, Item: %u, glyphIndex: %u, data length = %i", bagIndex, slot, castCount, spellId, pItem->GetEntry(), glyphIndex, (uint32)recvPacket.size());
+    sLog->outDebug(LOG_FILTER_NETWORKIO, "WORLD: CMSG_USE_ITEM packet, bagIndex: %u, slot: %u, castCount: %u, spellId: %u, Item: %u, glyphIndex: %u, data length = %i", bagIndex, slot, castCount, spellId, pItem->GetEntry(), glyphIndex, (uint32)recvPacket.size());
 
     ItemTemplate const* proto = pItem->GetTemplate();
     if (!proto)
@@ -175,7 +169,7 @@ void WorldSession::HandleUseItemOpcode(WorldPacket& recvPacket)
 
 void WorldSession::HandleOpenItemOpcode(WorldPacket& recvPacket)
 {
-    sLog->outDetail("WORLD: CMSG_OPEN_ITEM packet, data length = %i", (uint32)recvPacket.size());
+    sLog->outDebug(LOG_FILTER_NETWORKIO, "WORLD: CMSG_OPEN_ITEM packet, data length = %i", (uint32)recvPacket.size());
 
     Player* pUser = _player;
 
@@ -187,7 +181,7 @@ void WorldSession::HandleOpenItemOpcode(WorldPacket& recvPacket)
 
     recvPacket >> bagIndex >> slot;
 
-    sLog->outDetail("bagIndex: %u, slot: %u", bagIndex, slot);
+    sLog->outInfo(LOG_FILTER_NETWORKIO, "bagIndex: %u, slot: %u", bagIndex, slot);
 
     Item* item = pUser->GetItemByPos(bagIndex, slot);
     if (!item)
@@ -207,8 +201,8 @@ void WorldSession::HandleOpenItemOpcode(WorldPacket& recvPacket)
     if (!(proto->Flags & ITEM_PROTO_FLAG_OPENABLE) && !item->HasFlag(ITEM_FIELD_FLAGS, ITEM_FLAG_WRAPPED))
     {
         pUser->SendEquipError(EQUIP_ERR_CANT_DO_RIGHT_NOW, item, NULL);
-        sLog->outError("Possible hacking attempt: Player %s [guid: %u] tried to open item [guid: %u, entry: %u] which is not openable!",
-                pUser->GetName(), pUser->GetGUIDLow(), item->GetGUIDLow(), proto->ItemId);
+        sLog->outError(LOG_FILTER_NETWORKIO, "Possible hacking attempt: Player %s [guid: %u] tried to open item [guid: %u, entry: %u] which is not openable!",
+                pUser->GetName().c_str(), pUser->GetGUIDLow(), item->GetGUIDLow(), proto->ItemId);
         return;
     }
 
@@ -221,7 +215,7 @@ void WorldSession::HandleOpenItemOpcode(WorldPacket& recvPacket)
         if (!lockInfo)
         {
             pUser->SendEquipError(EQUIP_ERR_ITEM_LOCKED, item, NULL);
-            sLog->outError("WORLD::OpenItem: item [guid = %u] has an unknown lockId: %u!", item->GetGUIDLow(), lockId);
+            sLog->outError(LOG_FILTER_NETWORKIO, "WORLD::OpenItem: item [guid = %u] has an unknown lockId: %u!", item->GetGUIDLow(), lockId);
             return;
         }
 
@@ -254,7 +248,7 @@ void WorldSession::HandleOpenItemOpcode(WorldPacket& recvPacket)
         }
         else
         {
-            sLog->outError("Wrapped item %u don't have record in character_gifts table and will deleted", item->GetGUIDLow());
+            sLog->outError(LOG_FILTER_NETWORKIO, "Wrapped item %u don't have record in character_gifts table and will deleted", item->GetGUIDLow());
             pUser->DestroyItem(item->GetBagSlot(), item->GetSlot(), true);
             return;
         }
@@ -269,11 +263,11 @@ void WorldSession::HandleOpenItemOpcode(WorldPacket& recvPacket)
         pUser->SendLoot(item->GetGUID(), LOOT_CORPSE);
 }
 
-void WorldSession::HandleGameObjectUseOpcode(WorldPacket & recv_data)
+void WorldSession::HandleGameObjectUseOpcode(WorldPacket& recvData)
 {
     uint64 guid;
 
-    recv_data >> guid;
+    recvData >> guid;
 
     sLog->outDebug(LOG_FILTER_NETWORKIO, "WORLD: Recvd CMSG_GAMEOBJ_USE Message [guid=%u]", GUID_LOPART(guid));
 
@@ -303,9 +297,10 @@ void WorldSession::HandleGameobjectReportUse(WorldPacket& recvPacket)
     if (!go->IsWithinDistInMap(_player, INTERACTION_DISTANCE))
         return;
 
-    go->AI()->GossipHello(_player);
+    if (go->AI()->GossipHello(_player))
+        return;
 
-    _player->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_USE_GAMEOBJECT, go->GetEntry());
+    _player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_USE_GAMEOBJECT, go->GetEntry());
 }
 
 void WorldSession::HandleCastSpellOpcode(WorldPacket& recvPacket)
@@ -328,7 +323,7 @@ void WorldSession::HandleCastSpellOpcode(WorldPacket& recvPacket)
 
     if (!spellInfo)
     {
-        sLog->outError("WORLD: unknown spell id %u", spellId);
+        sLog->outError(LOG_FILTER_NETWORKIO, "WORLD: unknown spell id %u", spellId);
         recvPacket.rfinish(); // prevent spam at ignore packet
         return;
     }
@@ -444,7 +439,7 @@ void WorldSession::HandlePetCancelAuraOpcode(WorldPacket& recvPacket)
     SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellId);
     if (!spellInfo)
     {
-        sLog->outError("WORLD: unknown PET spell id %u", spellId);
+        sLog->outError(LOG_FILTER_NETWORKIO, "WORLD: unknown PET spell id %u", spellId);
         return;
     }
 
@@ -452,13 +447,13 @@ void WorldSession::HandlePetCancelAuraOpcode(WorldPacket& recvPacket)
 
     if (!pet)
     {
-        sLog->outError("HandlePetCancelAura: Attempt to cancel an aura for non-existant pet %u by player '%s'", uint32(GUID_LOPART(guid)), GetPlayer()->GetName());
+        sLog->outError(LOG_FILTER_NETWORKIO, "HandlePetCancelAura: Attempt to cancel an aura for non-existant pet %u by player '%s'", uint32(GUID_LOPART(guid)), GetPlayer()->GetName().c_str());
         return;
     }
 
     if (pet != GetPlayer()->GetGuardianPet() && pet != GetPlayer()->GetCharm())
     {
-        sLog->outError("HandlePetCancelAura: Pet %u is not a pet of player '%s'", uint32(GUID_LOPART(guid)), GetPlayer()->GetName());
+        sLog->outError(LOG_FILTER_NETWORKIO, "HandlePetCancelAura: Pet %u is not a pet of player '%s'", uint32(GUID_LOPART(guid)), GetPlayer()->GetName().c_str());
         return;
     }
 
@@ -484,9 +479,9 @@ void WorldSession::HandleCancelAutoRepeatSpellOpcode(WorldPacket& /*recvPacket*/
     _player->InterruptSpell(CURRENT_AUTOREPEAT_SPELL);
 }
 
-void WorldSession::HandleCancelChanneling(WorldPacket & recv_data)
+void WorldSession::HandleCancelChanneling(WorldPacket& recvData)
 {
-    recv_data.read_skip<uint32>();                          // spellid, not used
+    recvData.read_skip<uint32>();                          // spellid, not used
 
     // ignore for remote control state (for player case)
     Unit* mover = _player->m_mover;
@@ -514,12 +509,12 @@ void WorldSession::HandleTotemDestroyed(WorldPacket& recvPacket)
         return;
 
     Creature* totem = GetPlayer()->GetMap()->GetCreature(_player->m_SummonSlot[slotId]);
-    // Don't unsummon sentry totem
-    if (totem && totem->isTotem() && totem->GetEntry() != SENTRY_TOTEM_ENTRY)
+
+    if (totem && totem->isTotem())
         totem->ToTotem()->UnSummon();
 }
 
-void WorldSession::HandleSelfResOpcode(WorldPacket & /*recv_data*/)
+void WorldSession::HandleSelfResOpcode(WorldPacket & /*recvData*/)
 {
     sLog->outDebug(LOG_FILTER_NETWORKIO, "WORLD: CMSG_SELF_RES");                  // empty opcode
 
@@ -536,10 +531,10 @@ void WorldSession::HandleSelfResOpcode(WorldPacket & /*recv_data*/)
     }
 }
 
-void WorldSession::HandleSpellClick(WorldPacket& recv_data)
+void WorldSession::HandleSpellClick(WorldPacket& recvData)
 {
     uint64 guid;
-    recv_data >> guid;
+    recvData >> guid;
 
     // this will get something not in world. crash
     Creature* unit = ObjectAccessor::GetCreatureOrPetOrVehicle(*_player, guid);
@@ -554,11 +549,11 @@ void WorldSession::HandleSpellClick(WorldPacket& recv_data)
     unit->HandleSpellClick(_player);
 }
 
-void WorldSession::HandleMirrorImageDataRequest(WorldPacket & recv_data)
+void WorldSession::HandleMirrorImageDataRequest(WorldPacket& recvData)
 {
     sLog->outDebug(LOG_FILTER_NETWORKIO, "WORLD: CMSG_GET_MIRRORIMAGE_DATA");
     uint64 guid;
-    recv_data >> guid;
+    recvData >> guid;
 
     // Get unit for which data is needed by client
     Unit* unit = ObjectAccessor::GetObjectInWorld(guid, (Unit*)NULL);
@@ -650,12 +645,24 @@ void WorldSession::HandleUpdateProjectilePosition(WorldPacket& recvPacket)
     uint8 castCount;
     float x, y, z;    // Position of missile hit
 
-    recvPacket.readPackGUID(casterGuid);
+    recvPacket >> casterGuid;
     recvPacket >> spellId;
     recvPacket >> castCount;
     recvPacket >> x;
     recvPacket >> y;
     recvPacket >> z;
+
+    Unit* caster = ObjectAccessor::GetUnit(*_player, casterGuid);
+    if (!caster)
+        return;
+
+    Spell* spell = caster->FindCurrentSpellBySpellId(spellId);
+    if (!spell || !spell->m_targets.HasDst())
+        return;
+
+    Position pos = *spell->m_targets.GetDstPos();
+    pos.Relocate(x, y, z);
+    spell->m_targets.ModDst(pos);
 
     WorldPacket data(SMSG_SET_PROJECTILE_POSITION, 21);
     data << uint64(casterGuid);
@@ -663,5 +670,5 @@ void WorldSession::HandleUpdateProjectilePosition(WorldPacket& recvPacket)
     data << float(x);
     data << float(y);
     data << float(z);
-    SendPacket(&data);
+    caster->SendMessageToSet(&data, true);
 }

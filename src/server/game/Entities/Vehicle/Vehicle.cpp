@@ -28,6 +28,8 @@
 #include "ZoneScript.h"
 #include "SpellMgr.h"
 #include "SpellInfo.h"
+#include "MoveSplineInit.h"
+#include "TemporarySummon.h"
 
 Vehicle::Vehicle(Unit* unit, VehicleEntry const* vehInfo, uint32 creatureEntry) : _me(unit), _vehicleInfo(vehInfo), _usableSeatNum(0), _creatureEntry(creatureEntry)
 {
@@ -322,7 +324,7 @@ bool Vehicle::AddPassenger(Unit* unit, int8 seatId)
         ASSERT(!seat->second.Passenger);
     }
 
-    sLog->outDebug(LOG_FILTER_VEHICLES, "Unit %s enter vehicle entry %u id %u dbguid %u seat %d", unit->GetName(), _me->GetEntry(), _vehicleInfo->m_ID, _me->GetGUIDLow(), (int32)seat->first);
+    sLog->outDebug(LOG_FILTER_VEHICLES, "Unit %s enter vehicle entry %u id %u dbguid %u seat %d", unit->GetName().c_str(), _me->GetEntry(), _vehicleInfo->m_ID, _me->GetGUIDLow(), (int32)seat->first);
 
     seat->second.Passenger = unit->GetGUID();
     if (seat->second.SeatInfo->CanEnterOrExit())
@@ -338,7 +340,7 @@ bool Vehicle::AddPassenger(Unit* unit, int8 seatId)
         }
     }
 
-    if (seat->second.SeatInfo->m_flags && !(seat->second.SeatInfo->m_flags & VEHICLE_SEAT_FLAG_UNK1))
+    if (seat->second.SeatInfo->m_flags && !(seat->second.SeatInfo->m_flags & VEHICLE_SEAT_FLAG_ALLOW_TURNING))
         unit->AddUnitState(UNIT_STATE_ONVEHICLE);
 
     unit->AddUnitMovementFlag(MOVEMENTFLAG_ONTRANSPORT);
@@ -346,7 +348,7 @@ bool Vehicle::AddPassenger(Unit* unit, int8 seatId)
     unit->m_movementInfo.t_pos.m_positionX = veSeat->m_attachmentOffsetX;
     unit->m_movementInfo.t_pos.m_positionY = veSeat->m_attachmentOffsetY;
     unit->m_movementInfo.t_pos.m_positionZ = veSeat->m_attachmentOffsetZ;
-    unit->m_movementInfo.t_pos.m_orientation = 0;
+    unit->m_movementInfo.t_pos.SetOrientation(0);
     unit->m_movementInfo.t_time = 0; // 1 for player
     unit->m_movementInfo.t_seat = seat->first;
     unit->m_movementInfo.t_guid = _me->GetGUID();
@@ -361,10 +363,15 @@ bool Vehicle::AddPassenger(Unit* unit, int8 seatId)
 
     if (_me->IsInWorld())
     {
-        unit->SendClearTarget();                                // SMSG_BREAK_TARGET
-        unit->SetControlled(true, UNIT_STATE_ROOT);              // SMSG_FORCE_ROOT - In some cases we send SMSG_SPLINE_MOVE_ROOT here (for creatures)
-                                                                // also adds MOVEMENTFLAG_ROOT
-        unit->SendMonsterMoveTransport(_me);                     // SMSG_MONSTER_MOVE_TRANSPORT
+        unit->SendClearTarget();                            // SMSG_BREAK_TARGET
+        unit->SetControlled(true, UNIT_STATE_ROOT);        // SMSG_FORCE_ROOT - In some cases we send SMSG_SPLINE_MOVE_ROOT here (for creatures)
+                                                            // also adds MOVEMENTFLAG_ROOT
+        Movement::MoveSplineInit init(*unit);
+        init.DisableTransportPathTransformations();
+        init.MoveTo(veSeat->m_attachmentOffsetX, veSeat->m_attachmentOffsetY, veSeat->m_attachmentOffsetZ);
+        init.SetFacing(0.0f);
+        init.SetTransportEnter();
+        init.Launch();
 
         if (_me->GetTypeId() == TYPEID_UNIT)
         {
@@ -372,7 +379,8 @@ bool Vehicle::AddPassenger(Unit* unit, int8 seatId)
                 _me->ToCreature()->AI()->PassengerBoarded(unit, seat->first, true);
 
             // update all passenger's positions
-            RelocatePassengers(_me->GetPositionX(), _me->GetPositionY(), _me->GetPositionZ(), _me->GetOrientation());
+            //Passenger's spline OR vehicle movement will update positions
+            //RelocatePassengers(_me->GetPositionX(), _me->GetPositionY(), _me->GetPositionZ(), _me->GetOrientation());
         }
     }
 
@@ -390,7 +398,7 @@ void Vehicle::RemovePassenger(Unit* unit)
     SeatMap::iterator seat = GetSeatIteratorForPassenger(unit);
     ASSERT(seat != Seats.end());
 
-    sLog->outDebug(LOG_FILTER_VEHICLES, "Unit %s exit vehicle entry %u id %u dbguid %u seat %d", unit->GetName(), _me->GetEntry(), _vehicleInfo->m_ID, _me->GetGUIDLow(), (int32)seat->first);
+    sLog->outDebug(LOG_FILTER_VEHICLES, "Unit %s exit vehicle entry %u id %u dbguid %u seat %d", unit->GetName().c_str(), _me->GetEntry(), _vehicleInfo->m_ID, _me->GetGUIDLow(), (int32)seat->first);
 
     seat->second.Passenger = 0;
     if (seat->second.SeatInfo->CanEnterOrExit())
@@ -430,23 +438,23 @@ void Vehicle::RemovePassenger(Unit* unit)
 }
 
 //! Must be called after m_base::Relocate
-void Vehicle::RelocatePassengers(float x, float y, float z, float ang)
+void Vehicle::RelocatePassengers()
 {
     ASSERT(_me->GetMap());
 
-    // not sure that absolute position calculation is correct, it must depend on vehicle orientation and pitch angle
+    // not sure that absolute position calculation is correct, it must depend on vehicle pitch angle
     for (SeatMap::const_iterator itr = Seats.begin(); itr != Seats.end(); ++itr)
+    {
         if (Unit* passenger = ObjectAccessor::GetUnit(*GetBase(), itr->second.Passenger))
         {
             ASSERT(passenger->IsInWorld());
 
-            float px = x + passenger->m_movementInfo.t_pos.m_positionX;
-            float py = y + passenger->m_movementInfo.t_pos.m_positionY;
-            float pz = z + passenger->m_movementInfo.t_pos.m_positionZ;
-            float po = ang + passenger->m_movementInfo.t_pos.m_orientation;
-
+            float px, py, pz, po;
+            passenger->m_movementInfo.t_pos.GetPosition(px, py, pz, po);
+            CalculatePassengerPosition(px, py, pz, po);
             passenger->UpdatePosition(px, py, pz, po);
         }
+    }
 }
 
 void Vehicle::Dismiss()
@@ -504,4 +512,24 @@ uint8 Vehicle::GetAvailableSeatCount() const
             ++ret;
 
     return ret;
+}
+
+void Vehicle::CalculatePassengerPosition(float& x, float& y, float& z, float& o)
+{
+    float inx = x, iny = y, inz = z, ino = o;
+    o = GetBase()->GetOrientation() + ino;
+    x = GetBase()->GetPositionX() + inx * std::cos(GetBase()->GetOrientation()) - iny * std::sin(GetBase()->GetOrientation());
+    y = GetBase()->GetPositionY() + iny * std::cos(GetBase()->GetOrientation()) + inx * std::sin(GetBase()->GetOrientation());
+    z = GetBase()->GetPositionZ() + inz;
+}
+
+void Vehicle::CalculatePassengerOffset(float& x, float& y, float& z, float& o)
+{
+    o -= GetBase()->GetOrientation();
+    z -= GetBase()->GetPositionZ();
+    y -= GetBase()->GetPositionY();    // y = searchedY * std::cos(o) + searchedX * std::sin(o)
+    x -= GetBase()->GetPositionX();    // x = searchedX * std::cos(o) + searchedY * std::sin(o + pi)
+    float inx = x, iny = y;
+    y = (iny - inx * tan(GetBase()->GetOrientation())) / (cos(GetBase()->GetOrientation()) + std::sin(GetBase()->GetOrientation()) * tan(GetBase()->GetOrientation()));
+    x = (inx + iny * tan(GetBase()->GetOrientation())) / (cos(GetBase()->GetOrientation()) + std::sin(GetBase()->GetOrientation()) * tan(GetBase()->GetOrientation()));
 }
